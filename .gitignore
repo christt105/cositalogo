@@ -12,3 +12,5 @@ tools/tmdb-proxy/.wrangler/
 tools/telegram-bot/.dev.vars
 tools/telegram-bot/.wrangler/
 tools/telegram-import/.env
+tools/cositalogo-api/.dev.vars
+tools/cositalogo-api/.wrangler/
