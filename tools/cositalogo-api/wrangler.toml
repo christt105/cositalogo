@@ -2,6 +2,9 @@ name = "cositalogo-api"
 main = "src/worker.js"
 compatibility_date = "2026-09-01"
 
+[vars]
+BOT_USERNAME = "REPLACE_ME"
+
 [observability]
 enabled = false
 

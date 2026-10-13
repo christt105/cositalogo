@@ -48,6 +48,9 @@ beforeEach(() => {
   for (const [key, value] of Object.entries(SETTINGS)) {
     env.DB.sqlite.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(key, JSON.stringify(value));
   }
+  for (const uid of [1, 2, 7, 9, 42]) {
+    env.DB.sqlite.prepare("INSERT INTO members (user_id, name, created_at) VALUES (?, ?, 0)").run(uid, `user ${uid}`);
+  }
   clearCatalogMemo();
   clearSettingsCache();
   tmdbCalls = [];

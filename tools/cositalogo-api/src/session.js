@@ -1,20 +1,11 @@
 import { HttpError } from "./http.js";
+import { fromBase64Url, toBase64Url } from "./secrets.js";
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 
 export const SESSION_COOKIE = "s";
-
-function toBase64Url(bytes) {
-  let s = "";
-  for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function fromBase64Url(str) {
-  const s = atob(str.replace(/-/g, "+").replace(/_/g, "/"));
-  return Uint8Array.from(s, (c) => c.charCodeAt(0));
-}
+export const SESSION_TTL_MS = 30 * 24 * 3600e3;
 
 function hmacKey(secret) {
   return crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, [
@@ -53,10 +44,36 @@ export function cookieValue(request, name) {
   return null;
 }
 
-/** The signed-in user with their role, or a 401 when the request carries no valid session. */
+/** A `Set-Cookie` value for an HttpOnly cookie; a `maxAgeSeconds` of 0 deletes it. */
+export function setCookie(name, value, { path = "/", maxAgeSeconds }) {
+  return `${name}=${value}; Path=${path}; Max-Age=${maxAgeSeconds}; HttpOnly; Secure; SameSite=Lax`;
+}
+
+/** The signed-in user and what they may do, or a 401 when the request carries no valid session. */
 export async function requireUser(request, env) {
   const session = await readSession(cookieValue(request, SESSION_COOKIE), env.SESSION_SECRET);
   if (!session) throw new HttpError(401, "sign in first");
-  const admin = await env.DB.prepare("SELECT 1 AS yes FROM admins WHERE user_id = ?").bind(session.uid).first();
-  return { id: session.uid, name: session.name ?? "", admin: Boolean(admin) };
+  return loadUser(env.DB, session.uid, session.name);
+}
+
+/** A user with the roles D1 holds for them right now; an admin can always write. */
+export async function loadUser(db, id, name) {
+  const roles = await db.prepare(
+    "SELECT EXISTS (SELECT 1 FROM members WHERE user_id = ?) AS member, EXISTS (SELECT 1 FROM admins WHERE user_id = ?) AS admin",
+  ).bind(id, id).first();
+  const admin = Boolean(roles.admin);
+  return { id, name: name ?? "", member: admin || Boolean(roles.member), admin };
+}
+
+/** Like `requireUser`, but a 403 unless the user has unlocked writing with the password or is an admin. */
+export async function requireWriter(request, env) {
+  const user = await requireUser(request, env);
+  if (!user.member) throw new HttpError(403, "enter the write password first");
+  return user;
+}
+
+export async function requireAdmin(request, env) {
+  const user = await requireUser(request, env);
+  if (!user.admin) throw new HttpError(403, "admins only");
+  return user;
 }
