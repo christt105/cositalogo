@@ -3,7 +3,7 @@ main = "src/worker.js"
 compatibility_date = "2026-09-01"
 
 [vars]
-BOT_USERNAME = "REPLACE_ME"
+BOT_USERNAME = "CositalogoBot"
 
 [observability]
 enabled = false
@@ -11,5 +11,5 @@ enabled = false
 [[d1_databases]]
 binding = "DB"
 database_name = "cositalogo"
-database_id = "REPLACE_ME"
+database_id = "e94251c9-969a-4ffc-bf03-b12c4aabda43"
 migrations_dir = "migrations"
