@@ -1,5 +1,6 @@
 import { ValidationError, validateLinkEntry, validatePoster } from "../../../scripts/validation.js";
 import { linkKey } from "../../../site/rules.js";
+import { audit } from "./audit.js";
 import { refreshTitle, seasonValue } from "./catalog.js";
 import { HttpError } from "./http.js";
 import { fetchSeason, fetchTitle } from "./tmdb.js";
@@ -50,13 +51,6 @@ function linkColumns(input, type, settings) {
     url: entry.link,
     link_key: linkKey(entry.link),
   };
-}
-
-const asJson = (value) => (value === undefined ? null : JSON.stringify(value));
-
-function audit(db, user, action, target, before, after, now) {
-  return db.prepare("INSERT INTO audit (at, user_id, action, target, before, after) VALUES (?, ?, ?, ?, ?, ?)")
-    .bind(now, user.id, action, target, asJson(before), asJson(after));
 }
 
 function viewOf(base, cols) {
