@@ -129,6 +129,6 @@ against a fresh `npm run build` to check the import itself.
 
 ## Not done yet
 
-Creating the D1 database and deploying need the Cloudflare account, so
-`database_id` and `BOT_USERNAME` are still `REPLACE_ME`, the webhook is not
-registered with Telegram and there is no deploy workflow. Rate limiting of writes is a separate step.
+The D1 database and the Worker exist and the webhook is registered, but they
+were deployed by hand: there is no deploy workflow yet. The production D1 has
+not been imported into, and rate limiting of writes is a separate step.
