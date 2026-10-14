@@ -401,6 +401,44 @@ describe("routing and consistency", () => {
   });
 });
 
+describe("GET /api/settings", () => {
+  test("lists qualities, groups and languages to anyone", async () => {
+    env.DB.sqlite.prepare("INSERT INTO settings (key, value) VALUES ('other', '1')").run();
+    const res = await call("GET", "/api/settings");
+    assert.equal(res.status, 200);
+    assert.deepEqual(await res.json(), SETTINGS);
+  });
+
+  test("answers 503 while any of them is missing", async () => {
+    env.DB.sqlite.exec("DELETE FROM settings WHERE key = 'languages'");
+    assert.equal((await call("GET", "/api/settings")).status, 503);
+  });
+});
+
+describe("GET /api/titles/:type/:id/links", () => {
+  test("needs a session", async () => {
+    await call("POST", "/api/links", { uid: 1, body: movieLink() });
+    assert.equal((await call("GET", "/api/titles/movie/603/links")).status, 401);
+  });
+
+  test("lists the links with their ids in catalog order and says which ones the user can delete", async () => {
+    const first = await (await call("POST", "/api/links", { uid: 1, body: movieLink() })).json();
+    const second = await (await call("POST", "/api/links", { uid: 2, body: movieLink({ quality: "4K", link: `https://t.me/c/${GENERAL}/2/101` }) })).json();
+    const res = await call("GET", "/api/titles/movie/603/links", { uid: 1 });
+    assert.equal(res.status, 200);
+    assert.deepEqual(await res.json(), [{ ...first, canDelete: true }, { ...second, canDelete: false }]);
+    const [entry] = await catalog();
+    assert.deepEqual(entry.links.map((l) => l.link), [first.link, second.link]);
+    env.DB.sqlite.prepare("INSERT INTO admins (user_id, created_at) VALUES (9, 0)").run();
+    const asAdmin = await (await call("GET", "/api/titles/movie/603/links", { uid: 9 })).json();
+    assert.deepEqual(asAdmin.map((l) => l.canDelete), [true, true]);
+  });
+
+  test("answers 404 for a title with no links", async () => {
+    assert.equal((await call("GET", "/api/titles/series/1399/links", { uid: 1 })).status, 404);
+  });
+});
+
 describe("concurrent writes", () => {
   test("two first links for the same new title both land", async () => {
     const results = await Promise.all([

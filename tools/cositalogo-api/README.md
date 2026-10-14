@@ -11,6 +11,8 @@ API and is served by this same Worker (see [Web app](#web-app)).
 |---|---|---|
 | `GET /api/catalog` | anyone | Whole catalog, same shape as `site/catalog.json`, with `ETag` and 304 |
 | `GET /api/titles/:type/:id` | anyone | `{ entry, detail }` for one title (`type` is `movie` or `series`) |
+| `GET /api/titles/:type/:id/links` | signed in | The title's links with their `id`, in catalog order, each with `canDelete` for this user |
+| `GET /api/settings` | anyone | `{ qualities, groups, languages }`, the values links are validated against; 503 while any is missing |
 | `POST /api/links` | member | Add a link `{ type, tmdb, season?, quality, audio?, subs?, tags?, link }`; the title is fetched from TMDB the first time |
 | `PATCH /api/links/:id` | member | Change any of `season`, `quality`, `audio`, `subs`, `tags`, `link` |
 | `DELETE /api/links/:id` | author or admin | Delete a link; a title with no links left disappears |
