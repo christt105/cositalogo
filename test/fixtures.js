@@ -66,3 +66,21 @@ export function fakeTmdb({ movies = {}, tv = {}, find = {} } = {}) {
 
 export const MOVIE_INFO = { id: 550, title: "El club de la lucha", poster_path: "/a.jpg" };
 export const TV_INFO = { id: 1396, name: "Breaking Bad", poster_path: "/b.jpg" };
+
+const CATALOG_MOVIES = {
+  550: { id: 550, title: "El club de la lucha", original_title: "Fight Club", imdb_id: "tt0137523", release_date: "1999-10-15", poster_path: "/fc.jpg", genres: [{ name: "Drama" }] },
+  680: { id: 680, title: "Pulp Fiction", original_title: "Pulp Fiction", imdb_id: "tt0110912", release_date: "1994-09-10", poster_path: "/pf.jpg", genres: [] },
+};
+const CATALOG_TV = { 1396: { id: 1396, name: "Breaking Bad", original_name: "Breaking Bad", first_air_date: "2008-01-20", poster_path: "/bb.jpg", genres: [{ name: "Drama" }] } };
+
+/** A TMDB stub with two movies and a series whose season 9 does not exist. */
+export function catalogTmdb() {
+  return {
+    ...fakeTmdb({ movies: CATALOG_MOVIES, tv: CATALOG_TV }),
+    getTvSeason: async (id, number) => {
+      const season = String(number);
+      if (season === "9") throw new Error("404");
+      return { name: `Temporada ${season}`, poster_path: season === "1" ? "/s1.jpg" : null, air_date: "2008-01-20", episodes: [{}, {}] };
+    },
+  };
+}
