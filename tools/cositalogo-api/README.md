@@ -166,6 +166,4 @@ wrangler d1 execute <database> --remote --file ../../restore.sql
 
 ## Not done yet
 
-The D1 database and the Worker exist and the webhook is registered, but they
-were deployed by hand: there is no deploy workflow yet. Rate limiting of writes
-is a separate step.
+Rate limiting of writes, and the web screens that use this API.
