@@ -146,6 +146,11 @@ behaviour that is wrong or surprising but still in place, so whoever fixes
 it only has to flip the assertion. The `test` job in `.github/workflows/validate.yml`
 runs `npm test` on every push and pull request, next to `npm run validate`.
 
+`npm run test:web` runs the tests of the new web app in `web/` with Vitest
+and happy-dom (`web/src/*.test.js`, configured in `vite.config.js`), and the
+same CI job runs it and `npm run build:web` after `npm test`. The web app
+itself is described in `tools/cositalogo-api/README.md`.
+
 ## TMDB
 
 A minimal client in `scripts/lib.js` uses native `fetch`. If the API key

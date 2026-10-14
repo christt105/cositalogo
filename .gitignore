@@ -16,3 +16,4 @@ tools/cositalogo-api/.dev.vars
 tools/cositalogo-api/.wrangler/
 import.sql
 restore.sql
+tools/cositalogo-api/dist/
