@@ -113,9 +113,15 @@ Serving the web from the API's own origin is what lets it sign in later: the
 session cookie is `SameSite=Lax` and the API sends no CORS headers, so a page
 on another site could neither send the cookie nor read the answers.
 
-For now it is a read-only grid with search (`matchesSearch` from
-`site/rules.js`) over `GET /api/catalog`, with the search kept in the hash
-(`#/?q=...`). There is no service worker. `web/public/_headers` adds
+Screens: the grid with search (`matchesSearch` from `site/rules.js`) over
+`GET /api/catalog`, with the search kept in the hash (`#/?q=...`); a title
+page (`#/movie/:id`, `#/series/:id`) over `GET /api/titles/...`; sign-in
+(`#/login`, opens the bot link and polls `POST /api/login/poll`); unlock
+(`#/unlock`, the shared password); and Add (`#/add`, TMDB search through
+`cositeca-tmdb-proxy`, season, quality, languages, tags and a Telegram link
+checked with `site/forms.js`). Members can edit any link and delete their
+own (admins, any) from the title page, with the ids from
+`GET /api/titles/:type/:id/links`. Every write reloads the shared catalog. There is no service worker. `web/public/_headers` adds
 `X-Robots-Tag: noindex` to every file (the page also has the `robots` meta)
 and long-lived caching to the hashed files under `/assets/`.
 
@@ -126,10 +132,14 @@ and long-lived caching to the hashed files under `/assets/`.
   per resource on top (`getCatalog`, `getTitle`).
 - `composables/`: reactive state. `useCatalog` is created once in `App.vue`
   and shared with `provide`/`inject`; it holds the titles, an index by
-  `type/tmdb`, the loading status and `reload()`.
+  `type/tmdb`, the loading status and `reload()`. `useSession` (who is signed
+  in) and `useSettings` (qualities, groups and languages, loaded on first
+  use) are provided the same way.
 - `views/`: one per route, listed in `routes.js`; `lib/route.js` matches the
   hash against that table and anything else shows `NotFoundView`.
-- `components/`: pieces of a screen.
+- `components/`: pieces of a screen (`AppHeader`, `LinkForm`, `LinkRow`,
+  `TmdbSearch`, `TitleCard`, and `WriteGate`, which only shows its content
+  to members).
 - `lib/`: plain functions without Vue.
 
 ```sh

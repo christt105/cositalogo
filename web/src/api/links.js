@@ -1,0 +1,20 @@
+import { request } from "./client.js";
+
+/** The links of a title with their ids and `canDelete`; needs a session. */
+export function getTitleLinks(type, id, options) {
+  return request(`/api/titles/${type}/${id}/links`, { cache: "no-cache", ...options });
+}
+
+/** Adds `{ type, tmdb, season?, quality, audio, subs, tags, link }` and resolves to the new link. */
+export function addLink(link, options) {
+  return request("/api/links", { method: "POST", body: link, ...options });
+}
+
+/** Changes some of `season`, `quality`, `audio`, `subs`, `tags` and `link`. */
+export function updateLink(id, changes, options) {
+  return request(`/api/links/${id}`, { method: "PATCH", body: changes, ...options });
+}
+
+export function deleteLink(id, options) {
+  return request(`/api/links/${id}`, { method: "DELETE", ...options });
+}

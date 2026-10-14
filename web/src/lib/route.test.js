@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { gridHash, matchRoute, parseHash } from "./route.js";
+import { gridHash, matchRoute, nextPath, parseHash, withNext } from "./route.js";
 
 describe("parseHash", () => {
   it("treats an empty or bare hash as the grid", () => {
@@ -42,5 +42,18 @@ describe("matchRoute", () => {
     expect(matchRoute(routes, ["movie", "abc"])).toBeNull();
     expect(matchRoute(routes, ["movie"])).toBeNull();
     expect(matchRoute(routes, ["series", "1399"])).toBeNull();
+  });
+});
+
+describe("withNext and nextPath", () => {
+  it("carry the path to go back to", () => {
+    expect(withNext("/login", "/movie/550")).toBe("#/login?next=%2Fmovie%2F550");
+    expect(nextPath(parseHash(withNext("/login", "/movie/550")).params)).toBe("/movie/550");
+  });
+
+  it("leave out the grid and ignore anything that is not a path", () => {
+    expect(withNext("/login", "/")).toBe("#/login");
+    expect(nextPath(new URLSearchParams("next=https://evil.example"))).toBe("/");
+    expect(nextPath(new URLSearchParams(""))).toBe("/");
   });
 });

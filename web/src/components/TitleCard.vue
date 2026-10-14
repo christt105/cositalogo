@@ -8,7 +8,7 @@ const typeLabel = computed(() => [TYPE_LABELS[props.item.type], seasonSummary(pr
 </script>
 
 <template>
-  <article class="card">
+  <a class="card" :href="`#/${item.type}/${item.tmdb}`">
     <div class="card__poster-wrap">
       <img v-if="item.poster" class="card__poster" :src="item.poster" alt="" loading="lazy">
       <span class="card__type">{{ typeLabel }}</span>
@@ -18,5 +18,5 @@ const typeLabel = computed(() => [TYPE_LABELS[props.item.type], seasonSummary(pr
     </div>
     <h2 class="card__title">{{ item.title }}</h2>
     <div class="card__year">{{ item.year }}</div>
-  </article>
+  </a>
 </template>
