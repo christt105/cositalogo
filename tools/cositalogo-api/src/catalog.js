@@ -90,12 +90,18 @@ export async function refreshTitle(db, type, tmdbId, settings, now = Date.now())
   throw new Error(`could not refresh ${type}:${tmdbId}, it kept changing`);
 }
 
-export function snapshotStatement(db, version = Date.now()) {
-  return db.prepare(
+/** The statement that concatenates the fragments into the snapshot; `onlyIfChanged` leaves an identical snapshot alone, version included. */
+export function snapshotSql({ onlyIfChanged = false } = {}) {
+  return (
     "INSERT INTO snapshot (id, version, body) " +
-      "SELECT 1, max(?, coalesce((SELECT version FROM snapshot WHERE id = 1), 0) + 1), '[' || coalesce(group_concat(json, ',' ORDER BY created_at DESC, type, tmdb_id), '') || ']' FROM titles WHERE true " +
-      "ON CONFLICT (id) DO UPDATE SET version = excluded.version, body = excluded.body"
-  ).bind(version);
+    "SELECT 1, max(?, coalesce((SELECT version FROM snapshot WHERE id = 1), 0) + 1), '[' || coalesce(group_concat(json, ',' ORDER BY created_at DESC, type, tmdb_id), '') || ']' FROM titles WHERE true " +
+    "ON CONFLICT (id) DO UPDATE SET version = excluded.version, body = excluded.body" +
+    (onlyIfChanged ? " WHERE snapshot.body IS NOT excluded.body" : "")
+  );
+}
+
+export function snapshotStatement(db, version = Date.now()) {
+  return db.prepare(snapshotSql()).bind(version);
 }
 
 let memo = null;

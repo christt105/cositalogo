@@ -14,3 +14,4 @@ tools/telegram-bot/.wrangler/
 tools/telegram-import/.env
 tools/cositalogo-api/.dev.vars
 tools/cositalogo-api/.wrangler/
+import.sql
