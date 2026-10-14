@@ -13,3 +13,7 @@ binding = "DB"
 database_name = "cositalogo"
 database_id = "e94251c9-969a-4ffc-bf03-b12c4aabda43"
 migrations_dir = "migrations"
+
+[assets]
+directory = "./dist"
+run_worker_first = ["/api/*"]

@@ -1,8 +1,9 @@
 # Cositálogo API
 
 Cloudflare Worker with a D1 database that will replace GitHub issues as the
-catalog's source of truth. Nothing consumes it yet: the site still reads the
-`catalog.json` built from the YAML files, and this Worker is not deployed.
+catalog's source of truth. The public site on GitHub Pages still reads the
+`catalog.json` built from the YAML files; the new web app in `web/` reads this
+API and is served by this same Worker (see [Web app](#web-app)).
 
 ## Endpoints
 
@@ -80,8 +81,13 @@ printf 'TMDB_API_KEY=...\nSESSION_SECRET=any-local-secret\nTELEGRAM_WEBHOOK_SECR
 XDG_CONFIG_HOME=~/scratch/xdg wrangler d1 migrations apply cositalogo --local
 XDG_CONFIG_HOME=~/scratch/xdg wrangler d1 execute cositalogo --local \
   --command "INSERT INTO settings VALUES ('qualities', '[\"1080p\",\"4K\"]')"  # and groups, languages
+npm run build:web   # from the repository root, see below
 XDG_CONFIG_HOME=~/scratch/xdg wrangler dev
 ```
+
+`wrangler dev` and `wrangler deploy` stop with "The directory specified by the
+"assets.directory" field in your configuration file does not exist" until
+the web app has been built at least once; the `d1` commands do not need it.
 
 A session cookie for local testing can be signed with `signSession` from
 `src/session.js`, or a sign-in can be completed by posting a fake update to
@@ -90,12 +96,46 @@ A session cookie for local testing can be signed with `signSession` from
 against an in-memory SQLite with the real migrations (`test/d1-shim.js`), so
 they need Node 22 or later for `node:sqlite`.
 
+## Web app
+
+`web/` is a Vue 3 app built with Vite (`vite.config.js` at the repository
+root) into `tools/cositalogo-api/dist/`, which is gitignored and uploaded as
+the Worker's [static assets](https://developers.cloudflare.com/workers/static-assets/).
+`run_worker_first = ["/api/*"]` in `wrangler.toml` sends every API request
+to the Worker before looking at the files, so a file can never shadow an
+endpoint; any other path is served from the build, and one with no file
+falls through to the Worker, which answers the usual JSON 404. Static files
+do not run the Worker, so they cost no Worker CPU.
+
+Serving the web from the API's own origin is what lets it sign in later: the
+session cookie is `SameSite=Lax` and the API sends no CORS headers, so a page
+on another site could neither send the cookie nor read the answers.
+
+For now it is a read-only grid with search (`matchesSearch` from
+`site/rules.js`) over `GET /api/catalog`, with the search kept in the hash
+(`#/?q=...`). There is no service worker. `web/public/_headers` adds
+`X-Robots-Tag: noindex` to every file (the page also has the `robots` meta)
+and long-lived caching to the hashed files under `/assets/`.
+
+```sh
+npm run build:web    # writes tools/cositalogo-api/dist
+npm run dev:web      # Vite dev server, proxies /api to wrangler dev on :8787
+npm run test:web     # Vitest + happy-dom
+```
+
+`npm run dev:web` needs `wrangler dev` running on its default port; Vite's
+dev server does not apply `_headers`.
+
 ## Deploying
 
-`.github/workflows/deploy-cositalogo-api.yml` runs the tests, applies pending
-D1 migrations and deploys the Worker on every push to `main` that touches its
-code, migrations, `wrangler.toml` or the shared `site/rules.js` and
-`scripts/validation.js`, and can be run by hand. The Worker's secrets live in
+`.github/workflows/deploy-cositalogo-api.yml` runs the tests (`npm test` and
+`npm run test:web`), builds the web app, applies pending D1 migrations,
+deploys the Worker with the web as its assets and then checks that
+`/api/catalog`, a missing title and the web page answer as expected. It runs
+on every push to `main` that touches the Worker's code, migrations,
+`wrangler.toml`, `web/`, `vite.config.js` or the shared `site/rules.js` and
+`scripts/validation.js`, and can be run by hand. Deploying by hand needs
+`npm run build:web` first. The Worker's secrets live in
 Cloudflare (`wrangler secret put`) and survive deploys, so the workflow does
 not set them; the repository's `CLOUDFLARE_API_TOKEN` needs Workers and D1
 edit access.
@@ -166,4 +206,4 @@ wrangler d1 execute <database> --remote --file ../../restore.sql
 
 ## Not done yet
 
-Rate limiting of writes, and the web screens that use this API.
+Rate limiting of writes, and signing in and writing from the web app.
