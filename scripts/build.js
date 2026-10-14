@@ -156,7 +156,7 @@ function getAddedTimestamps() {
 
 /**
  * Builds the catalog entry and detail of every title file under movies/ and
- * series/. A file that fails to parse or build is skipped with a warning.
+ * series/, keeping the parsed YAML as `data`. A file that fails to parse or build is skipped with a warning.
  */
 export async function loadTitleEntries({ tmdb, groups, qualities }, { addedTimestamps, now }) {
   const entries = [];
@@ -176,7 +176,7 @@ export async function loadTitleEntries({ tmdb, groups, qualities }, { addedTimes
       try {
         const data = load(readFileSync(path, "utf8"));
         const { entry, detail } = await builder(id, data, { tmdb, groups, qualities });
-        entries.push({ entry, detail, addedAt: addedTimestamps.get(path) ?? now });
+        entries.push({ entry, detail, data, addedAt: addedTimestamps.get(path) ?? now });
       } catch (err) {
         console.warn(`skipping ${path}: ${err.message}`);
       }

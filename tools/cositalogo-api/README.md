@@ -90,9 +90,45 @@ A session cookie for local testing can be signed with `signSession` from
 against an in-memory SQLite with the real migrations (`test/d1-shim.js`), so
 they need Node 22 or later for `node:sqlite`.
 
+## Importing the YAML files
+
+`import/import.js` turns `movies/`, `series/` and the config YAML files into
+SQL that makes a D1 database hold exactly that, reusing the build's own title
+loading and TMDB cache (`.cache/tmdb.json`; titles missing from it are fetched,
+so `TMDB_API_KEY` is needed) and this Worker's `titleEntry` for the stored
+fragments. Run it from the repository root:
+
+```sh
+set -a; . ~/.config/cositeca/tmdb.env; set +a
+node tools/cositalogo-api/import/import.js --out import.sql     # --now <ms> pins the timestamps
+cd tools/cositalogo-api
+wrangler d1 execute cositalogo --local --file ../../import.sql   # or --remote
+```
+
+Until the cut-over the YAML files are the source of truth, so every run makes
+D1 match them: titles and links that are new or changed are written, and
+anything the files do not mention is deleted, including links added through the
+API. Running it twice with the same files writes nothing (every statement is an
+upsert guarded by a comparison, and the snapshot is only rebuilt when its body
+changes). A title whose fragment changed has its links deleted and inserted
+again so they keep the order of the file. Titles added in the same second get
+`created_at` values a few milliseconds apart that reproduce the build's order.
+
+`import/compare.js` checks a served catalog against the published one and lists
+the titles that are missing, extra or different (with the fields), ignoring the
+order of `qualities` and noting if the titles come in another order:
+
+```sh
+node tools/cositalogo-api/import/compare.js site/catalog.json http://localhost:8787/api/catalog
+node tools/cositalogo-api/import/compare.js https://christt105.github.io/cositeca/catalog.json https://cositalogo-api.christt105.workers.dev/api/catalog
+```
+
+Differences against the published catalog are expected when the TMDB cache is
+newer or older than the last deploy (a changed poster, for instance); compare
+against a fresh `npm run build` to check the import itself.
+
 ## Not done yet
 
-Creating the D1 database and deploying need the Cloudflare account, so
-`database_id` and `BOT_USERNAME` are still `REPLACE_ME`, the webhook is not
-registered with Telegram and there is no deploy workflow. The import of the
-current YAML files and rate limiting of writes are separate steps.
+The D1 database and the Worker exist and the webhook is registered, but they
+were deployed by hand: there is no deploy workflow yet. The production D1 has
+not been imported into, and rate limiting of writes is a separate step.
