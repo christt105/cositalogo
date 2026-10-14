@@ -7,28 +7,11 @@ import { fileURLToPath } from "node:url";
 import { buildImport } from "../tools/cositalogo-api/import/import.js";
 import { compareCatalogs, formatReport } from "../tools/cositalogo-api/import/compare.js";
 import { loadTitleEntries } from "../scripts/build.js";
-import { config, fakeTmdb, link, yaml } from "./fixtures.js";
+import { catalogTmdb as tmdbStub, config, link, yaml } from "./fixtures.js";
 import { createD1 } from "./d1-shim.js";
 
 const MIGRATIONS = fileURLToPath(new URL("../tools/cositalogo-api/migrations", import.meta.url));
 const NOW = 1_760_000_000_000;
-
-const MOVIES = {
-  550: { id: 550, title: "El club de la lucha", original_title: "Fight Club", imdb_id: "tt0137523", release_date: "1999-10-15", poster_path: "/fc.jpg", genres: [{ name: "Drama" }] },
-  680: { id: 680, title: "Pulp Fiction", original_title: "Pulp Fiction", imdb_id: "tt0110912", release_date: "1994-09-10", poster_path: "/pf.jpg", genres: [] },
-};
-const TV = { 1396: { id: 1396, name: "Breaking Bad", original_name: "Breaking Bad", first_air_date: "2008-01-20", poster_path: "/bb.jpg", genres: [{ name: "Drama" }] } };
-
-function tmdbStub() {
-  return {
-    ...fakeTmdb({ movies: MOVIES, tv: TV }),
-    getTvSeason: async (id, number) => {
-      const season = String(number);
-      if (season === "9") throw new Error("404");
-      return { name: `Temporada ${season}`, poster_path: season === "1" ? "/s1.jpg" : null, air_date: "2008-01-20", episodes: [{}, {}] };
-    },
-  };
-}
 
 describe("Cositálogo import", () => {
   let root;

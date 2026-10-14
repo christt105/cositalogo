@@ -127,8 +127,35 @@ Differences against the published catalog are expected when the TMDB cache is
 newer or older than the last deploy (a changed poster, for instance); compare
 against a fresh `npm run build` to check the import itself.
 
+## Backups
+
+`backup/export.js` reads the production D1 through the Cloudflare API and
+writes it as files: `titles/<type>/<tmdb id>.json` with the title row and its
+links, `audit/<yyyy-mm>.json`, and `settings.json`, `admins.json` and
+`members.json`. JSON columns are written parsed so a diff shows the change, and
+the same data always gives the same files, so a nightly commit only happens
+when something changed. Catalog fragments and the snapshot are left out
+because a restore rebuilds them; login requests and password failures are not
+kept. The token only needs D1 read access.
+
+```sh
+CLOUDFLARE_ACCOUNT_ID=... CLOUDFLARE_API_TOKEN=... node tools/cositalogo-api/backup/export.js <backup checkout>
+```
+
+`backup/restore.js` turns a backup into SQL that replaces the titles, links,
+settings, admins, members and audit of a database and rebuilds every fragment
+and the snapshot as the API would. Restore into an empty D1 first (`wrangler
+d1 create`, then `wrangler d1 migrations apply`) and compare it with
+`import/compare.js` before pointing anything at it:
+
+```sh
+node tools/cositalogo-api/backup/restore.js <backup checkout> --out restore.sql
+cd tools/cositalogo-api
+wrangler d1 execute <database> --remote --file ../../restore.sql
+```
+
 ## Not done yet
 
 The D1 database and the Worker exist and the webhook is registered, but they
-were deployed by hand: there is no deploy workflow yet. The production D1 has
-not been imported into, and rate limiting of writes is a separate step.
+were deployed by hand: there is no deploy workflow yet. Rate limiting of writes
+is a separate step.
