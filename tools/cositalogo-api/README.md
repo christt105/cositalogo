@@ -117,6 +117,19 @@ For now it is a read-only grid with search (`matchesSearch` from
 `X-Robots-Tag: noindex` to every file (the page also has the `robots` meta)
 and long-lived caching to the hashed files under `/assets/`.
 
+`web/src/` is split by responsibility:
+
+- `api/`: `client.js` makes every call (same origin, JSON bodies with their
+  content type, errors as `ApiError` with the `status`), with one function
+  per resource on top (`getCatalog`, `getTitle`).
+- `composables/`: reactive state. `useCatalog` is created once in `App.vue`
+  and shared with `provide`/`inject`; it holds the titles, an index by
+  `type/tmdb`, the loading status and `reload()`.
+- `views/`: one per route, listed in `routes.js`; `lib/route.js` matches the
+  hash against that table and anything else shows `NotFoundView`.
+- `components/`: pieces of a screen.
+- `lib/`: plain functions without Vue.
+
 ```sh
 npm run build:web    # writes tools/cositalogo-api/dist
 npm run dev:web      # Vite dev server, proxies /api to wrangler dev on :8787

@@ -1,10 +1,17 @@
 <script setup>
 import { computed } from "vue";
-import CatalogGrid from "./CatalogGrid.vue";
-import { useHashRoute } from "./route.js";
+import { provideCatalog } from "./composables/useCatalog.js";
+import { useHashRoute } from "./composables/useHashRoute.js";
+import { matchRoute } from "./lib/route.js";
+import { ROUTES } from "./routes.js";
+import NotFoundView from "./views/NotFoundView.vue";
+
+provideCatalog();
 
 const route = useHashRoute();
-const view = computed(() => (route.value.parts.length === 0 ? "grid" : "missing"));
+const matched = computed(() => matchRoute(ROUTES, route.value.parts));
+const view = computed(() => matched.value?.route.view ?? NotFoundView);
+const viewProps = computed(() => (matched.value ? { ...matched.value.params, query: route.value.params } : {}));
 </script>
 
 <template>
@@ -12,11 +19,7 @@ const view = computed(() => (route.value.parts.length === 0 ? "grid" : "missing"
     <a class="header__title" href="#/">Cositálogo</a>
   </header>
   <main>
-    <CatalogGrid v-if="view === 'grid'" :params="route.params" />
-    <section v-else class="empty">
-      <p>Aquí no hay nada.</p>
-      <a class="btn" href="#/">Volver al catálogo</a>
-    </section>
+    <component :is="view" v-bind="viewProps" />
   </main>
   <footer class="footer">
     <a href="https://www.themoviedb.org" target="_blank" rel="noopener"><img class="footer__logo" src="/tmdb.svg" alt="TMDB"></a>

@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from "vue";
-import { TYPE_LABELS, seasonSummary } from "./catalog.js";
+import { TYPE_LABELS, seasonSummary } from "../lib/catalog.js";
 
 const props = defineProps({ item: { type: Object, required: true } });
 

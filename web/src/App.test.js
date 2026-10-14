@@ -38,7 +38,7 @@ afterEach(() => {
 describe("App", () => {
   it("shows every title with its type, seasons and qualities", async () => {
     await mount("#/");
-    expect(fetch).toHaveBeenCalledWith("/api/catalog", { cache: "no-cache" });
+    expect(fetch).toHaveBeenCalledWith("/api/catalog", { method: "GET", cache: "no-cache" });
     expect(titles()).toEqual(["El club de la lucha", "Juego de tronos"]);
     const cards = root.querySelectorAll(".card");
     expect(cards[1].querySelector(".card__type").textContent).toBe("Serie · T1-2");
