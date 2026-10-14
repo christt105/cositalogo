@@ -7,6 +7,8 @@ on:
       - "tools/cositalogo-api/src/**"
       - "tools/cositalogo-api/migrations/**"
       - "tools/cositalogo-api/wrangler.toml"
+      - "web/**"
+      - "vite.config.js"
       - "scripts/validation.js"
       - "site/rules.js"
       - ".github/workflows/deploy-cositalogo-api.yml"
@@ -29,6 +31,8 @@ jobs:
           node-version: "22"
       - run: npm ci
       - run: npm test
+      - run: npm run test:web
+      - run: npm run build:web
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -43,3 +47,10 @@ jobs:
           workingDirectory: tools/cositalogo-api
           wranglerVersion: "4.134.0"
           command: deploy
+      - name: Check the API and the web after deploying
+        env:
+          BASE: https://cositalogo-api.christt105.workers.dev
+        run: |
+          curl -fsS "$BASE/api/catalog" | node -e 'let s="";process.stdin.on("data",(c)=>s+=c).on("end",()=>{const n=JSON.parse(s).length;if(!n)process.exit(1);console.log(`catalog: ${n} titles`)})'
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/api/titles/movie/0")" = 404
+          curl -fsS -D - -o /dev/null "$BASE/" | grep -qi '^x-robots-tag: noindex'
