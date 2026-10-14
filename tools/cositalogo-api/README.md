@@ -90,6 +90,16 @@ A session cookie for local testing can be signed with `signSession` from
 against an in-memory SQLite with the real migrations (`test/d1-shim.js`), so
 they need Node 22 or later for `node:sqlite`.
 
+## Deploying
+
+`.github/workflows/deploy-cositalogo-api.yml` runs the tests, applies pending
+D1 migrations and deploys the Worker on every push to `main` that touches its
+code, migrations, `wrangler.toml` or the shared `site/rules.js` and
+`scripts/validation.js`, and can be run by hand. The Worker's secrets live in
+Cloudflare (`wrangler secret put`) and survive deploys, so the workflow does
+not set them; the repository's `CLOUDFLARE_API_TOKEN` needs Workers and D1
+edit access.
+
 ## Importing the YAML files
 
 `import/import.js` turns `movies/`, `series/` and the config YAML files into
