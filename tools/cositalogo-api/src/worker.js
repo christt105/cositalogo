@@ -1,10 +1,12 @@
 import { addAdmin, listAdmins, listMembers, removeAdmin, revokeMember, unlock } from "./access.js";
+import { listAudit } from "./audit.js";
 import { serveCatalog, serveTitle } from "./catalog.js";
 import { HttpError, json, readJson } from "./http.js";
 import { addLink, deleteLink, listTitleLinks, moveLink, parseTarget, setPoster, updateLink } from "./links.js";
 import { logout, pollLogin, startLogin, telegramWebhook } from "./login.js";
 import { requireAdmin, requireUser, requireWriter } from "./session.js";
 import { loadSettings } from "./settings.js";
+import { undo } from "./undo.js";
 
 const ROUTES = [
   ["GET", /^\/api\/catalog$/, (req, env) => serveCatalog(req, env.DB)],
@@ -25,6 +27,11 @@ const ROUTES = [
   ["GET", /^\/api\/admins$/, admin((req, env) => listAdmins(env.DB))],
   ["PUT", /^\/api\/admins\/(\d{1,15})$/, admin((req, env, user, [id]) => addAdmin(env.DB, user, id))],
   ["DELETE", /^\/api\/admins\/(\d{1,15})$/, admin((req, env, user, [id]) => removeAdmin(env.DB, user, id))],
+  ["GET", /^\/api\/audit$/, admin(async (req, env) => json(await listAudit(env.DB, new URL(req.url))))],
+  ["POST", /^\/api\/audit\/(\d{1,12})\/undo$/, admin(async (req, env, user, [id]) => {
+    await readJson(req);
+    return json(await undo(env, user, await loadSettings(env.DB), id));
+  })],
   ["POST", /^\/api\/links$/, write(async (req, env, user, settings) => json(await addLink(env, user, settings, await readJson(req)), 201))],
   ["PATCH", /^\/api\/links\/(\d{1,12})$/, write(async (req, env, user, settings, [id]) => json(await updateLink(env, user, settings, id, await readJson(req))))],
   ["DELETE", /^\/api\/links\/(\d{1,12})$/, write(async (req, env, user, settings, [id]) => {

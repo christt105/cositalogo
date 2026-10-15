@@ -470,3 +470,135 @@ describe("concurrent writes", () => {
     assert.deepEqual(entry.qualities, ["1080p", "4K"]);
   });
 });
+
+describe("audit log and undo", () => {
+  const ADMIN = 9;
+  beforeEach(() => {
+    env.DB.sqlite.prepare("INSERT INTO admins (user_id, name, created_at) VALUES (?, 'Jefa', 0)").run(ADMIN);
+  });
+  const add = async (body = movieLink(), uid = 7) => (await call("POST", "/api/links", { uid, body })).json();
+  const undo = (id, uid = ADMIN) => call("POST", `/api/audit/${id}/undo`, { uid, body: {} });
+  const lastAudit = () => auditRows().at(-1);
+  const linkRow = (id) => env.DB.sqlite.prepare("SELECT * FROM links WHERE id = ?").get(id);
+
+  test("GET /api/audit is for admins, newest first, with names, pages and a title filter", async () => {
+    await add();
+    await add(movieLink({ tmdb: 129, link: `https://t.me/c/${GENERAL}/2/200` }), 1);
+    assert.equal((await call("GET", "/api/audit")).status, 401);
+    assert.equal((await call("GET", "/api/audit", { uid: 7 })).status, 403);
+    const page = await (await call("GET", "/api/audit?limit=1", { uid: ADMIN })).json();
+    assert.equal(page.more, true);
+    assert.equal(page.entries.length, 1);
+    const [newest] = page.entries;
+    assert.deepEqual({ ...newest, at: 0 }, {
+      id: 2, at: 0, user: { id: 1, name: "user 1" }, action: "add", target: `link:${newest.target.slice(5)}`, before: null,
+      after: { type: "movie", tmdb: 129, quality: "1080p", audio: ["Castellano"], subs: [], tags: [], link: `https://t.me/c/${GENERAL}/2/200` },
+      reverts: null, undoneBy: null,
+    });
+    const next = await (await call("GET", "/api/audit?before=2", { uid: ADMIN })).json();
+    assert.deepEqual(next.entries.map((e) => e.id), [1]);
+    assert.equal(next.more, false);
+    const only = await (await call("GET", "/api/audit?title=movie:603", { uid: ADMIN })).json();
+    assert.deepEqual(only.entries.map((e) => e.after.tmdb), [603]);
+    assert.equal((await call("GET", "/api/audit?title=x", { uid: ADMIN })).status, 400);
+  });
+
+  test("undoing an add deletes the link, once, and the row says who undid it", async () => {
+    const link = await add();
+    const res = await undo(1);
+    assert.equal(res.status, 200);
+    assert.deepEqual(await res.json(), { id: 2 });
+    assert.deepEqual(await catalog(), []);
+    assert.equal(lastAudit().action, "delete");
+    assert.equal(lastAudit().reverts, 1);
+    assert.equal((await undo(1)).status, 409);
+    const [entry] = (await (await call("GET", "/api/audit?before=2", { uid: ADMIN })).json()).entries;
+    assert.equal(entry.undoneBy, 2);
+    assert.equal(linkRow(link.id), undefined);
+  });
+
+  test("undoing an undo redoes the write, back in its place", async () => {
+    const link = await add();
+    const before = await catalog();
+    await undo(1);
+    assert.equal((await undo(2)).status, 200);
+    assert.deepEqual(await catalog(), before);
+    assert.equal(linkRow(link.id).added_by, 7);
+    assert.equal(lastAudit().reverts, 2);
+  });
+
+  test("undoing an edit only works while the link is as the edit left it", async () => {
+    const link = await add();
+    const original = await catalog();
+    await call("PATCH", `/api/links/${link.id}`, { uid: 1, body: { quality: "4K" } });
+    await call("PATCH", `/api/links/${link.id}`, { uid: 2, body: { tags: ["HDR"] } });
+    const late = await undo(2);
+    assert.equal(late.status, 409);
+    assert.match((await late.json()).error, /changed after/);
+    assert.equal((await undo(3)).status, 200);
+    assert.equal((await undo(2)).status, 200);
+    assert.deepEqual(await catalog(), original);
+  });
+
+  test("undoing a move puts the link back, bringing back the emptied title", async () => {
+    const link = await add();
+    const original = await catalog();
+    await call("POST", `/api/links/${link.id}/move`, { uid: 7, body: { type: "movie", tmdb: 129 } });
+    assert.deepEqual((await catalog()).map((t) => t.tmdb), [129]);
+    assert.equal((await undo(2)).status, 200);
+    assert.equal(lastAudit().action, "move");
+    assert.deepEqual((await catalog()).map((t) => t.tmdb), [603]);
+    assert.deepEqual((await catalog())[0].links, original[0].links);
+  });
+
+  test("undoing a delete restores the same link with its id and author, or refuses if its message is used again", async () => {
+    const first = await add();
+    await add(movieLink({ quality: "4K", link: `https://t.me/c/${GENERAL}/2/101` }), 1);
+    const original = await catalog();
+    const createdAt = linkRow(first.id).created_at;
+    await call("DELETE", `/api/links/${first.id}`, { uid: 7 });
+    const deleted = lastAudit();
+    assert.equal(JSON.parse(deleted.before).addedBy, 7);
+    assert.equal((await undo(deleted.id)).status, 200);
+    assert.deepEqual(await catalog(), original);
+    assert.equal(linkRow(first.id).added_by, 7);
+    assert.equal(linkRow(first.id).created_at, createdAt);
+
+    await call("DELETE", `/api/links/${first.id}`, { uid: ADMIN });
+    const again = lastAudit().id;
+    await add(movieLink({ tmdb: 129 }), 2);
+    assert.equal((await undo(again)).status, 409);
+  });
+
+  test("undoing an old-format delete takes the author from the add", async () => {
+    const link = await add();
+    env.DB.sqlite.prepare("DELETE FROM links WHERE id = ?").run(link.id);
+    env.DB.sqlite.prepare("INSERT INTO audit (at, user_id, action, target, before) VALUES (1, 9, 'delete', ?, ?)")
+      .run(`link:${link.id}`, JSON.stringify({ id: link.id, type: "movie", tmdb: 603, quality: "1080p", audio: ["Castellano"], subs: [], tags: [], link: link.link }));
+    assert.equal((await undo(lastAudit().id)).status, 200);
+    assert.equal(linkRow(link.id).added_by, 7);
+  });
+
+  test("undoing a poster change brings the previous one back while nobody changed it since", async () => {
+    await add(movieLink({ poster: "https://x.test/a.jpg" }));
+    await call("PUT", "/api/titles/movie/603/poster", { uid: 1, body: { poster: "https://x.test/b.jpg" } });
+    await call("PUT", "/api/titles/movie/603/poster", { uid: 1, body: { poster: "https://x.test/c.jpg" } });
+    const posters = auditRows().filter((r) => r.action === "poster").map((r) => r.id);
+    assert.equal((await undo(posters[1])).status, 409);
+    assert.equal((await undo(posters[2])).status, 200);
+    assert.equal((await catalog())[0].poster, "https://x.test/b.jpg");
+    assert.equal((await undo(posters[1])).status, 200);
+    assert.equal((await undo(posters[0])).status, 200);
+    assert.equal((await catalog())[0].poster, "https://image.tmdb.org/t/p/w342/matrix.jpg");
+  });
+
+  test("refuses other actions, members, unknown rows and non-JSON requests", async () => {
+    env.DB.sqlite.prepare("INSERT INTO audit (at, user_id, action, target) VALUES (1, 9, 'grant', 'member:5')").run();
+    assert.equal((await undo(lastAudit().id)).status, 400);
+    await add();
+    const id = lastAudit().id;
+    assert.equal((await undo(id, 7)).status, 403);
+    assert.equal((await undo(999)).status, 404);
+    assert.equal((await call("POST", `/api/audit/${id}/undo`, { uid: ADMIN })).status, 415);
+  });
+});
