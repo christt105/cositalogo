@@ -49,7 +49,7 @@ jobs:
           command: deploy
       - name: Check the API and the web after deploying
         env:
-          BASE: https://cositalogo-api.christt105.workers.dev
+          BASE: https://cositalogo.christt105.workers.dev
         run: |
           curl -fsS "$BASE/api/catalog" | node -e 'let s="";process.stdin.on("data",(c)=>s+=c).on("end",()=>{const n=JSON.parse(s).length;if(!n)process.exit(1);console.log(`catalog: ${n} titles`)})'
           test "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/api/titles/movie/0")" = 404

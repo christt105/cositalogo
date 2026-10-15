@@ -4,7 +4,7 @@ Cloudflare Worker behind the old Cositeca bot, which used to walk people through
 a short conversation and open an `Añadir cosita` issue for
 `.github/workflows/add-entry.yml`. That issue flow is frozen: the catalog now
 lives in the Cositálogo D1 and is edited from the web at
-https://cositalogo-api.christt105.workers.dev/, and `add-entry`, `batch` and
+https://cositalogo.christt105.workers.dev/, and `add-entry`, `batch` and
 `sweep` are disabled.
 
 The Worker now answers every private message, and any button left over from
