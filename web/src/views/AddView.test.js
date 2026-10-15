@@ -6,6 +6,7 @@ const MEMBER = { id: 7, name: "Ana", member: true, admin: false };
 const GOT = { type: "series", tmdb: 1399, title: "Juego de tronos", year: "2011", poster: null, seasons: [{ season_number: 1, name: "Temporada 1" }, { season_number: 2, name: "Temporada 2" }] };
 const EXISTING = { type: "series", tmdb: 1399, title: "Juego de tronos", links: [{ season: 1, seasonName: "Temporada 1", quality: "1080p", audio: ["Castellano"], subs: [], tags: [] }] };
 const LINK = "https://t.me/c/2229558644/777";
+const POSTER = "https://image.tmdb.org/t/p/w342/es.jpg";
 
 let view;
 afterEach(() => {
@@ -24,7 +25,8 @@ async function mount(routes, query = "type=series&tmdb=1399") {
     ...routes,
   });
   const loadTitle = vi.fn(async () => GOT);
-  view = await mountView(AddView, { query: new URLSearchParams(query), loadTitle });
+  const loadPosters = vi.fn(async () => [{ key: "es", label: "Castellano", posters: [{ value: POSTER, thumb: POSTER }] }]);
+  view = await mountView(AddView, { query: new URLSearchParams(query), loadTitle, loadPosters });
   await settle();
   return { api, loadTitle, catalogLoads: () => catalogLoads };
 }
@@ -59,6 +61,26 @@ describe("AddView", () => {
     expect(post.init.headers).toEqual({ "content-type": "application/json" });
     expect(catalogLoads()).toBe(2);
     expect(location.hash).toBe("#/series/1399");
+  });
+
+  it("offers no poster picker for a title already in the catalog", async () => {
+    await mount({});
+    expect(view.root.querySelector(".poster-picker")).toBeNull();
+  });
+
+  it("sends the chosen poster with the first link of a new title", async () => {
+    const { api } = await mount({ "GET /api/catalog": [], "POST /api/links": json({ id: 9 }, 201) });
+    view.root.querySelector(".poster-grid .poster").click();
+    await settle(1);
+    expect(view.root.querySelector(".selected__poster").getAttribute("src")).toBe(POSTER);
+    await fillAndSend();
+    expect(api.calls.find((c) => c.method === "POST").body).toMatchObject({ type: "series", tmdb: 1399, poster: POSTER });
+  });
+
+  it("sends no poster when the default is kept", async () => {
+    const { api } = await mount({ "GET /api/catalog": [], "POST /api/links": json({ id: 9 }, 201) });
+    await fillAndSend();
+    expect(api.calls.find((c) => c.method === "POST").body).not.toHaveProperty("poster");
   });
 
   it("shows why the API refused it", async () => {

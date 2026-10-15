@@ -3,6 +3,7 @@ import { computed, ref, shallowRef } from "vue";
 import { addLink } from "../api/links.js";
 import { getTmdbTitle } from "../api/tmdb.js";
 import LinkForm from "../components/LinkForm.vue";
+import PosterPicker from "../components/PosterPicker.vue";
 import TmdbSearch from "../components/TmdbSearch.vue";
 import WriteGate from "../components/WriteGate.vue";
 import { useCatalog } from "../composables/useCatalog.js";
@@ -13,6 +14,7 @@ import { errorMessage } from "../lib/errors.js";
 const props = defineProps({
   query: { type: URLSearchParams, required: true },
   loadTitle: { type: Function, default: getTmdbTitle },
+  loadPosters: { type: Function, default: undefined },
 });
 
 const catalog = useCatalog();
@@ -21,11 +23,13 @@ const selected = shallowRef(null);
 const state = ref("idle");
 const busy = ref(false);
 const error = ref("");
+const poster = ref(null);
 
 const existing = computed(() => (selected.value ? catalog.byKey.value.get(titleKey(selected.value.type, selected.value.tmdb)) : null));
 
 async function select({ type, tmdb }) {
   selected.value = null;
+  poster.value = null;
   error.value = "";
   state.value = "loading";
   try {
@@ -45,7 +49,7 @@ async function submit(body) {
   error.value = "";
   const { type, tmdb } = selected.value;
   try {
-    await addLink({ type, tmdb, ...body });
+    await addLink({ type, tmdb, ...body, ...(poster.value && !existing.value ? { poster: poster.value } : {}) });
     await catalog.reload();
     location.hash = `#/${type}/${tmdb}`;
   } catch (err) {
@@ -66,7 +70,7 @@ async function submit(body) {
       <p v-else-if="state === 'error'" class="form__error">No se ha encontrado ese título en TMDB.</p>
       <template v-else-if="selected">
         <div class="selected">
-          <img v-if="selected.poster" class="selected__poster" :src="selected.poster" alt="">
+          <img v-if="poster ?? selected.poster" class="selected__poster" :src="poster ?? selected.poster" alt="">
           <div>
             <h2 class="selected__title">{{ selected.title }}</h2>
             <p class="panel__hint">{{ TYPE_LABELS[selected.type] }} {{ selected.year }}</p>
@@ -82,6 +86,16 @@ async function submit(body) {
             </div>
           </div>
         </div>
+        <PosterPicker
+          v-if="!existing"
+          :key="`poster-${titleKey(selected.type, selected.tmdb)}`"
+          v-model="poster"
+          :type="selected.type"
+          :tmdb="selected.tmdb"
+          :default-poster="selected.poster"
+          :original-language="selected.originalLanguage ?? null"
+          v-bind="loadPosters ? { loadPosters } : {}"
+        />
         <LinkForm :key="titleKey(selected.type, selected.tmdb)" :type="selected.type" :seasons="selected.seasons" submit-label="Añadir" :busy="busy" @submit="submit" />
         <p v-if="error" class="form__error" role="alert">{{ error }}</p>
       </template>

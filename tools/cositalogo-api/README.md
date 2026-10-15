@@ -14,7 +14,7 @@ redirects here (`site/redirect.js`).
 | `GET /api/titles/:type/:id` | anyone | `{ entry, detail }` for one title (`type` is `movie` or `series`) |
 | `GET /api/titles/:type/:id/links` | signed in | The title's links with their `id`, in catalog order, each with `canDelete` for this user |
 | `GET /api/settings` | anyone | `{ qualities, groups, languages }`, the values links are validated against; 503 while any is missing |
-| `POST /api/links` | member | Add a link `{ type, tmdb, season?, quality, audio?, subs?, tags?, link }`; the title is fetched from TMDB the first time |
+| `POST /api/links` | member | Add a link `{ type, tmdb, season?, quality, audio?, subs?, tags?, link, poster? }`; the title is fetched from TMDB the first time, and `poster` (a manual poster) is only accepted then, 409 if the title already exists |
 | `PATCH /api/links/:id` | member | Change any of `season`, `quality`, `audio`, `subs`, `tags`, `link` |
 | `DELETE /api/links/:id` | author or admin | Delete a link; a title with no links left disappears |
 | `POST /api/links/:id/move` | author or admin | Move a link to `{ type, tmdb, season? }` |
@@ -239,4 +239,4 @@ wrangler d1 execute <database> --remote --file ../../restore.sql
 
 ## Not done yet
 
-Rate limiting of writes, and signing in and writing from the web app.
+Rate limiting of writes.
