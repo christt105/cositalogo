@@ -174,6 +174,26 @@ describe("POST /api/links", () => {
     assert.equal(JSON.parse(rows[0].after).quality, "1080p");
   });
 
+  test("sets a manual poster when the add creates the title, logged in the same transaction", async () => {
+    const poster = "https://image.tmdb.org/t/p/w342/other.jpg";
+    const res = await call("POST", "/api/links", { uid: 7, body: movieLink({ poster }) });
+    assert.equal(res.status, 201);
+    assert.equal((await catalog())[0].poster, poster);
+    const rows = auditRows();
+    assert.deepEqual(rows.map((r) => [r.action, r.target]), [["poster", "movie:603"], ["add", `link:${(await res.json()).id}`]]);
+    assert.equal(JSON.parse(rows[0].after), poster);
+  });
+
+  test("refuses a poster for a title that already exists, or one that is not https, writing nothing", async () => {
+    await call("POST", "/api/links", { uid: 1, body: movieLink() });
+    const again = await call("POST", "/api/links", { uid: 1, body: movieLink({ link: `https://t.me/c/${COMUNIDAD}/9`, poster: "https://x.test/a.jpg" }) });
+    assert.equal(again.status, 409);
+    const bad = await call("POST", "/api/links", { uid: 1, body: movieLink({ tmdb: 129, link: `https://t.me/c/${COMUNIDAD}/10`, poster: "http://x.test/a.jpg" }) });
+    assert.equal(bad.status, 400);
+    assert.equal((await catalog()).length, 1);
+    assert.equal(auditRows().length, 1);
+  });
+
   test("fills season names and posters for series, falling back when TMDB lacks the season", async () => {
     const base = { type: "series", tmdb: 1399, quality: "1080p" };
     await call("POST", "/api/links", { uid: 1, body: { ...base, season: 1, link: `https://t.me/c/${GENERAL}/4/1` } });

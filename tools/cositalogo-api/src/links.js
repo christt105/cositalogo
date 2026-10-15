@@ -84,6 +84,7 @@ async function prepareTitle(env, type, tmdbId, season, now) {
   const db = env.DB;
   const stmts = [];
   let row = await db.prepare("SELECT * FROM titles WHERE type = ? AND tmdb_id = ?").bind(type, tmdbId).first();
+  stmts.created = !row;
   if (!row) {
     const t = await fetchTitle(env, type, tmdbId);
     row = { seasons: "{}", detail: JSON.stringify(t.detail) };
@@ -129,9 +130,18 @@ export async function listTitleLinks(db, user, type, tmdbId) {
 export async function addLink(env, user, settings, body, now = Date.now()) {
   const { type, tmdbId } = parseTarget(body.type, body.tmdb);
   const cols = linkColumns(body, type, settings);
+  const poster = body.poster ?? null;
+  if (poster !== null) checkPoster(poster);
   await assertKeyFree(env.DB, cols.link_key);
   const db = env.DB;
   const stmts = await prepareTitle(env, type, tmdbId, cols.season, now);
+  if (poster !== null) {
+    if (!stmts.created) throw new HttpError(409, "the title is already in the catalog; change its poster with PUT /api/titles/:type/:id/poster");
+    stmts.push(
+      db.prepare("UPDATE titles SET poster = ? WHERE type = ? AND tmdb_id = ? AND poster IS NULL").bind(poster, type, tmdbId),
+      audit(db, user, "poster", `${type}:${tmdbId}`, null, poster, now)
+    );
+  }
   stmts.push(
     db.prepare(
       "INSERT INTO links (type, tmdb_id, season, quality, audio, subs, tags, url, link_key, added_by, created_at, updated_at) " +
@@ -212,13 +222,7 @@ export async function setPoster(env, user, settings, type, tmdbId, body, now = D
   const row = await db.prepare("SELECT * FROM titles WHERE type = ? AND tmdb_id = ?").bind(type, tmdbId).first();
   if (!row) throw new HttpError(404, "no such title");
   const poster = body.poster ?? null;
-  if (poster !== null) {
-    try {
-      validatePoster(poster);
-    } catch (err) {
-      throw new HttpError(400, err.message);
-    }
-  }
+  if (poster !== null) checkPoster(poster);
   const season = body.season === undefined || body.season === null ? null : String(body.season);
   if (season !== null && (type !== "series" || !/^(\d+|all)$/.test(season))) {
     throw new HttpError(400, 'season must be "all" or an integer, and only for series');
@@ -235,6 +239,14 @@ export async function setPoster(env, user, settings, type, tmdbId, body, now = D
   const before = season === null ? row.poster : parse(row.season_posters, {})[season] ?? null;
   await db.batch([update, audit(db, user, "poster", season === null ? target : `${target}:${season}`, before, poster, now)]);
   await refreshTitle(db, type, tmdbId, settings, now);
+}
+
+function checkPoster(poster) {
+  try {
+    validatePoster(poster);
+  } catch (err) {
+    throw new HttpError(400, err.message);
+  }
 }
 
 async function runWrites(db, stmts) {

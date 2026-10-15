@@ -1,6 +1,7 @@
 import { TMDB_URL_RE, TMDB_ID_RE, IMDB_ID_RE } from "../../../site/rules.js";
 import { IMG, proxyGet } from "../../../site/tmdb.js";
 import { nameOf, yearOf } from "../../../site/forms.js";
+import { groupPosters } from "../../../site/poster-picker.js";
 
 const TYPES = { movie: "movie", tv: "series" };
 
@@ -38,7 +39,7 @@ export async function searchTitles(query, get = proxyGet) {
     .map((r) => hit(r, r.media_type));
 }
 
-/** Title, year, poster and, for series, the TMDB seasons of one title. */
+/** Title, year, poster, original language and, for series, the TMDB seasons of one title. */
 export async function getTmdbTitle(type, id, get = proxyGet) {
   const info = await get(`/${type === "series" ? "tv" : "movie"}/${id}`);
   return {
@@ -47,6 +48,20 @@ export async function getTmdbTitle(type, id, get = proxyGet) {
     title: nameOf(info),
     year: yearOf(info),
     poster: info.poster_path ? `${IMG}/w342${info.poster_path}` : null,
+    originalLanguage: info.original_language ?? null,
     seasons: type === "series" ? (info.seasons ?? []) : [],
   };
+}
+
+/**
+ * The TMDB posters of a title in the picker's language groups, each poster
+ * as `{ value, thumb }`: the URL to store and a smaller one to show.
+ */
+export async function getTmdbPosters(type, id, originalLanguage, get = proxyGet) {
+  const data = await get(`/images?type=${type === "series" ? "tv" : "movie"}&id=${id}`);
+  return groupPosters(data.posters, originalLanguage).map((group) => ({
+    key: group.key,
+    label: group.label,
+    posters: group.posters.map((p) => ({ value: `${IMG}/w342${p.file_path}`, thumb: `${IMG}/w185${p.file_path}` })),
+  }));
 }
