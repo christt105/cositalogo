@@ -1,19 +1,21 @@
 <script setup>
-import { computed, onMounted, ref, shallowRef, watch } from "vue";
-import TitleCard from "./TitleCard.vue";
-import { debounce, fetchCatalog, searchCatalog } from "./catalog.js";
-import { gridHash } from "./route.js";
+import { computed, ref, watch } from "vue";
+import TitleCard from "../components/TitleCard.vue";
+import { useCatalog } from "../composables/useCatalog.js";
+import { searchCatalog } from "../lib/catalog.js";
+import { debounce } from "../lib/debounce.js";
+import { gridHash } from "../lib/route.js";
 
 const SEARCH_DEBOUNCE_MS = 150;
 
-const props = defineProps({ params: { type: URLSearchParams, required: true } });
+const props = defineProps({ query: { type: URLSearchParams, required: true } });
 
-const catalog = shallowRef([]);
-const status = ref("loading");
-const input = ref(props.params.get("q") ?? "");
+const catalog = useCatalog();
+const status = catalog.status;
+const input = ref(props.query.get("q") ?? "");
 const query = ref(input.value);
 
-const items = computed(() => searchCatalog(catalog.value, query.value));
+const items = computed(() => searchCatalog(catalog.items.value, query.value));
 
 const commitSearch = debounce(() => {
   query.value = input.value.trim();
@@ -21,22 +23,12 @@ const commitSearch = debounce(() => {
 }, SEARCH_DEBOUNCE_MS);
 
 watch(
-  () => props.params.get("q") ?? "",
+  () => props.query.get("q") ?? "",
   (q) => {
     input.value = q;
     query.value = q;
   }
 );
-
-onMounted(async () => {
-  try {
-    catalog.value = await fetchCatalog();
-    status.value = "ready";
-  } catch (err) {
-    console.error("Could not load the catalog", err);
-    status.value = "error";
-  }
-});
 </script>
 
 <template>

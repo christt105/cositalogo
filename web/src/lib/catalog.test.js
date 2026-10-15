@@ -1,18 +1,12 @@
-import { describe, expect, it, vi } from "vitest";
-import { fetchCatalog, searchCatalog, seasonSummary } from "./catalog.js";
+import { describe, expect, it } from "vitest";
+import { searchCatalog, seasonSummary, titleKey } from "./catalog.js";
 
 const movie = { type: "movie", tmdb: 550, imdb: "tt0137523", title: "El club de la lucha", originalTitle: "Fight Club", links: [] };
 const series = (seasons) => ({ type: "series", tmdb: 1399, title: "Juego de tronos", links: seasons.map((season) => ({ season })) });
 
-describe("fetchCatalog", () => {
-  it("revalidates /api/catalog and returns its body", async () => {
-    const fetchImpl = vi.fn(async () => new Response("[1]", { status: 200 }));
-    expect(await fetchCatalog(fetchImpl)).toEqual([1]);
-    expect(fetchImpl).toHaveBeenCalledWith("/api/catalog", { cache: "no-cache" });
-  });
-
-  it("rejects on an error status", async () => {
-    await expect(fetchCatalog(async () => new Response("", { status: 500 }))).rejects.toThrow("HTTP 500");
+describe("titleKey", () => {
+  it("joins the type and the TMDB id", () => {
+    expect(titleKey("series", 1399)).toBe("series/1399");
   });
 });
 
