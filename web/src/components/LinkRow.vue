@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from "vue";
 import LinkForm from "./LinkForm.vue";
+import MoveForm from "./MoveForm.vue";
 import { linkFields } from "../lib/links.js";
 
 const props = defineProps({
@@ -10,16 +11,25 @@ const props = defineProps({
   seasonsReady: { type: Boolean, default: true },
   canEdit: { type: Boolean, default: false },
   busy: { type: Boolean, default: false },
+  from: { type: Object, default: null },
+  loadTitle: { type: Function, default: undefined },
 });
-const emit = defineEmits(["edit", "save", "delete"]);
+const emit = defineEmits(["edit", "save", "delete", "move"]);
 
 const editing = ref(false);
+const moving = ref(false);
 const confirming = ref(false);
 
 function startEditing() {
   editing.value = true;
+  moving.value = false;
   confirming.value = false;
   emit("edit");
+}
+
+function startMoving() {
+  moving.value = true;
+  confirming.value = false;
 }
 
 async function save(body) {
@@ -41,9 +51,10 @@ async function save(body) {
     </div>
     <div class="link__actions">
       <a class="btn" :href="link.link" target="_blank" rel="noopener">Abrir</a>
-      <template v-if="canEdit && link.id && !editing">
+      <template v-if="canEdit && link.id && !editing && !moving">
         <button type="button" class="btn" :disabled="busy" @click="startEditing">Editar</button>
         <template v-if="link.canDelete">
+          <button v-if="from && !confirming" type="button" class="btn" :disabled="busy" @click="startMoving">Mover</button>
           <button v-if="!confirming" type="button" class="btn" :disabled="busy" @click="confirming = true">Borrar</button>
           <template v-else>
             <button type="button" class="btn btn--danger" :disabled="busy" @click="emit('delete')">Sí, borrar</button>
@@ -62,6 +73,15 @@ async function save(body) {
       cancellable
       @submit="save"
       @cancel="editing = false"
+    />
+    <MoveForm
+      v-else-if="moving"
+      :link="link"
+      :from="from"
+      :busy="busy"
+      v-bind="loadTitle ? { loadTitle } : {}"
+      @move="(target) => emit('move', target, () => (moving = false))"
+      @cancel="moving = false"
     />
   </li>
 </template>

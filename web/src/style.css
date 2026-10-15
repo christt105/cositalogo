@@ -483,3 +483,11 @@ body {
   border-color: var(--accent);
   color: var(--text);
 }
+
+.form .search {
+  flex: none;
+}
+
+.move .selected__poster {
+  width: 72px;
+}
