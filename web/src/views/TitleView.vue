@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, shallowRef, watch } from "vue";
 import { getTitle } from "../api/catalog.js";
-import { deleteLink, getTitleLinks, updateLink } from "../api/links.js";
+import { deleteLink, getTitleLinks, moveLink, updateLink } from "../api/links.js";
 import { getTmdbTitle } from "../api/tmdb.js";
 import LinkRow from "../components/LinkRow.vue";
 import { useCatalog } from "../composables/useCatalog.js";
@@ -23,6 +23,7 @@ const seasons = shallowRef([]);
 const state = ref("loading");
 const busy = ref(false);
 const error = ref("");
+const moved = ref("");
 const seasonsReady = ref(props.type !== "series");
 let seasonsLoaded = false;
 
@@ -77,6 +78,7 @@ async function loadSeasons() {
 async function write(action) {
   busy.value = true;
   error.value = "";
+  moved.value = "";
   try {
     await action();
     await Promise.all([load(), catalog.reload()]);
@@ -92,6 +94,14 @@ async function write(action) {
 
 async function save(link, body, done) {
   if (await write(() => updateLink(link.id, body))) done();
+}
+
+async function move(link, target, done) {
+  const stays = links.value.length > 1;
+  if (!(await write(() => moveLink(link.id, target)))) return;
+  done();
+  if (stays) moved.value = `#/${target.type}/${target.tmdb}`;
+  else location.hash = `#/${target.type}/${target.tmdb}`;
 }
 
 function remove(link) {
@@ -118,6 +128,7 @@ function remove(link) {
         </div>
       </div>
       <p v-if="error" class="form__error" role="alert">{{ error }}</p>
+      <p v-if="moved" class="panel__hint" role="status">Enlace movido. <a :href="moved">Ver dónde ha quedado</a></p>
       <ul class="links">
         <LinkRow
           v-for="(link, i) in links"
@@ -128,9 +139,12 @@ function remove(link) {
           :seasons-ready="seasonsReady"
           :can-edit="session.canWrite.value"
           :busy="busy"
+          :from="{ type: entry.type, tmdb: entry.tmdb }"
+          :load-title="loadTmdb"
           @edit="loadSeasons"
           @save="(body, done) => save(link, body, done)"
           @delete="remove(link)"
+          @move="(target, done) => move(link, target, done)"
         />
       </ul>
     </template>

@@ -32,7 +32,10 @@ async function mount(user, routes = {}) {
     "GET /api/titles/series/1399/links": owned,
     ...routes,
   });
-  const loadTmdb = vi.fn(async () => ({ seasons: [{ season_number: 1, name: "Temporada 1" }, { season_number: 2, name: "Temporada 2" }] }));
+  const loadTmdb = vi.fn(async (type, tmdb) => ({
+    type, tmdb, title: type === "movie" ? "Matrix" : "Juego de tronos", year: "", poster: null,
+    seasons: type === "movie" ? [] : [{ season_number: 1, name: "Temporada 1" }, { season_number: 2, name: "Temporada 2" }],
+  }));
   view = await mountView(TitleView, { type: "series", id: "1399", loadTmdb });
   await settle();
   return { api, loadTmdb, setEntry: (next) => (current = next), catalogLoads: () => catalogLoads };
@@ -111,6 +114,49 @@ describe("TitleView", () => {
     await settle();
     expect(api.calls.find((c) => c.method === "DELETE").path).toBe("/api/links/11");
     expect(view.root.textContent).toContain("no está en el Cositálogo");
+  });
+
+  it("offers moving only the links the user may delete", async () => {
+    await mount({ id: 7, name: "Ana", member: true, admin: false });
+    expect(button(rows()[0], "Mover")).not.toBeNull();
+    expect(button(rows()[1], "Mover")).toBeNull();
+  });
+
+  async function moveFirstTo(url) {
+    button(rows()[0], "Mover").click();
+    await settle(1);
+    type(rows()[0].querySelector("#tmdb-search"), url);
+    await new Promise((r) => setTimeout(r, 350));
+    await settle();
+    rows()[0].querySelector("form").dispatchEvent(new Event("submit"));
+    await settle();
+  }
+
+  it("moves a link elsewhere, reloads and says where it went while the title keeps others", async () => {
+    const { api, setEntry, catalogLoads } = await mount({ id: 7, name: "Ana", member: true, admin: false }, {
+      "POST /api/links/11/move": (body) => ({ ...owned[0], ...body }),
+    });
+    setEntry(entry([[2, "4K", L2]]));
+    await moveFirstTo("https://www.themoviedb.org/movie/603");
+    expect(api.calls.find((c) => c.method === "POST").body).toEqual({ type: "movie", tmdb: 603 });
+    expect(catalogLoads()).toBe(2);
+    expect(rows()).toHaveLength(1);
+    expect(view.root.querySelector("[role=status] a").getAttribute("href")).toBe("#/movie/603");
+    expect(location.hash).toBe("#/series/1399");
+  });
+
+  it("follows the link when it was the last one of the title", async () => {
+    const { setEntry } = await mount({ id: 7, name: "Ana", member: true, admin: true }, {
+      "GET /api/titles/series/1399/links": [{ ...owned[0], canDelete: true }],
+      "POST /api/links/11/move": (body) => ({ ...owned[0], ...body }),
+    });
+    setEntry(entry([[1, "1080p", L1]]));
+    view.unmount();
+    view = await mountView(TitleView, { type: "series", id: "1399", loadTmdb: async (type, tmdb) => ({ type, tmdb, title: "Matrix", year: "", poster: null, seasons: [] }) });
+    await settle();
+    setEntry(null);
+    await moveFirstTo("https://www.themoviedb.org/movie/603");
+    expect(location.hash).toBe("#/movie/603");
   });
 
   it("says when the title does not exist", async () => {

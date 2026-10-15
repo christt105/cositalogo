@@ -18,3 +18,8 @@ export function updateLink(id, changes, options) {
 export function deleteLink(id, options) {
   return request(`/api/links/${id}`, { method: "DELETE", ...options });
 }
+
+/** Moves a link to `{ type, tmdb, season? }` and resolves to the moved link. */
+export function moveLink(id, target, options) {
+  return request(`/api/links/${id}/move`, { method: "POST", body: target, ...options });
+}
