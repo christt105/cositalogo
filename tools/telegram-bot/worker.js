@@ -1,4 +1,4 @@
-export const WEB_URL = "https://cositalogo-api.christt105.workers.dev/";
+export const WEB_URL = "https://cositalogo.christt105.workers.dev/";
 
 export const RETIRED_TEXT = [
   "Ya no añado cosas al catálogo: ahora se hace desde la web del Cositálogo.",

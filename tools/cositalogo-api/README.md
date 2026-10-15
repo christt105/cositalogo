@@ -153,6 +153,13 @@ dev server does not apply `_headers`.
 
 ## Deploying
 
+The Worker is named `cositalogo` and answers at
+https://cositalogo.christt105.workers.dev/. Its first name, `cositalogo-api`,
+is kept by the small Worker in `legacy-redirect/`: API calls get a 308 to the
+same path on the new origin and any other address a page that moves the
+browser there keeping its `#/...` route. It has no workflow; deploy it by hand
+from that folder with `wrangler deploy` if it ever changes.
+
 `.github/workflows/deploy-cositalogo-api.yml` runs the tests (`npm test` and
 `npm run test:web`), builds the web app, applies pending D1 migrations,
 deploys the Worker with the web as its assets and then checks that
@@ -195,7 +202,7 @@ order of `qualities` and noting if the titles come in another order:
 
 ```sh
 node tools/cositalogo-api/import/compare.js site/catalog.json http://localhost:8787/api/catalog
-node tools/cositalogo-api/import/compare.js https://christt105.github.io/cositeca/catalog.json https://cositalogo-api.christt105.workers.dev/api/catalog
+node tools/cositalogo-api/import/compare.js https://christt105.github.io/cositeca/catalog.json https://cositalogo.christt105.workers.dev/api/catalog
 ```
 
 Differences against the published catalog are expected when the TMDB cache is

@@ -1,4 +1,4 @@
-name = "cositalogo-api"
+name = "cositalogo"
 main = "src/worker.js"
 compatibility_date = "2026-09-01"
 
