@@ -1,7 +1,7 @@
 import { addAdmin, listAdmins, listMembers, removeAdmin, revokeMember, unlock } from "./access.js";
 import { serveCatalog, serveTitle } from "./catalog.js";
 import { HttpError, json, readJson } from "./http.js";
-import { addLink, deleteLink, moveLink, parseTarget, setPoster, updateLink } from "./links.js";
+import { addLink, deleteLink, listTitleLinks, moveLink, parseTarget, setPoster, updateLink } from "./links.js";
 import { logout, pollLogin, startLogin, telegramWebhook } from "./login.js";
 import { requireAdmin, requireUser, requireWriter } from "./session.js";
 import { loadSettings } from "./settings.js";
@@ -9,6 +9,11 @@ import { loadSettings } from "./settings.js";
 const ROUTES = [
   ["GET", /^\/api\/catalog$/, (req, env) => serveCatalog(req, env.DB)],
   ["GET", /^\/api\/titles\/(movie|series)\/(\d{1,9})$/, (req, env, [type, id]) => serveTitle(env.DB, type, Number(id))],
+  ["GET", /^\/api\/titles\/(movie|series)\/(\d{1,9})\/links$/, async (req, env, [type, id]) => json(await listTitleLinks(env.DB, await requireUser(req, env), type, Number(id)))],
+  ["GET", /^\/api\/settings$/, async (req, env) => {
+    const { qualities, groups, languages } = await loadSettings(env.DB);
+    return json({ qualities, groups, languages });
+  }],
   ["POST", /^\/api\/login$/, (req, env) => startLogin(env)],
   ["POST", /^\/api\/login\/poll$/, (req, env) => pollLogin(req, env)],
   ["POST", /^\/api\/logout$/, () => logout()],

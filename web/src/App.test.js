@@ -14,7 +14,7 @@ let app;
 
 async function mount(hash, response = new Response(JSON.stringify(CATALOG))) {
   history.replaceState(null, "", `/${hash}`);
-  vi.stubGlobal("fetch", vi.fn(async () => response));
+  vi.stubGlobal("fetch", vi.fn(async (path) => (path === "/api/catalog" ? response : new Response('{"error":"sign in first"}', { status: 401 }))));
   root = document.createElement("div");
   document.body.append(root);
   app = createApp(App);
@@ -86,8 +86,18 @@ describe("App", () => {
     expect(root.querySelector(".toolbar__count")).toBeNull();
   });
 
+  it("links every card to its title page", async () => {
+    await mount("#/");
+    expect([...root.querySelectorAll("a.card")].map((a) => a.getAttribute("href"))).toEqual(["#/movie/550", "#/series/1399"]);
+  });
+
+  it("offers to sign in when there is no session", async () => {
+    await mount("#/?q=fight");
+    expect(root.querySelector(".header__session a").getAttribute("href")).toBe("#/login");
+  });
+
   it("shows a way back for any other route", async () => {
-    await mount("#/movie/550");
+    await mount("#/nope/550");
     expect(root.querySelector(".grid")).toBeNull();
     expect(root.querySelector('a.btn[href="#/"]')).not.toBeNull();
   });

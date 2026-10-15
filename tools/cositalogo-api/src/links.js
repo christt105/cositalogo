@@ -116,6 +116,16 @@ function dropIfEmpty(db, type, tmdbId) {
     .bind(type, tmdbId, type, tmdbId);
 }
 
+/**
+ * The links of a title with their ids, in catalog order, for a signed-in
+ * user; `canDelete` says whether this user may delete or move each one.
+ */
+export async function listTitleLinks(db, user, type, tmdbId) {
+  const { results } = await db.prepare("SELECT * FROM links WHERE type = ? AND tmdb_id = ? ORDER BY id").bind(type, tmdbId).all();
+  if (results.length === 0) throw new HttpError(404, "not found");
+  return results.map((row) => ({ ...linkView(row), canDelete: user.admin || row.added_by === user.id }));
+}
+
 export async function addLink(env, user, settings, body, now = Date.now()) {
   const { type, tmdbId } = parseTarget(body.type, body.tmdb);
   const cols = linkColumns(body, type, settings);
