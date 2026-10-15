@@ -123,6 +123,14 @@ describe("origin checks", () => {
     assert.equal(res.status, 403);
   });
 
+  test("the Cositálogo Worker origins are accepted", async () => {
+    for (const origin of ["https://cositalogo-api.christt105.workers.dev", "https://cositalogo.christt105.workers.dev"]) {
+      const res = await call("/movie/550", { headers: { Origin: origin } });
+      assert.equal(res.status, 200, origin);
+      assert.equal(res.headers.get("Access-Control-Allow-Origin"), origin);
+    }
+  });
+
   test("LAN and localhost dev origins are accepted", async () => {
     for (const origin of [
       "http://192.168.1.15:8098",
@@ -149,6 +157,10 @@ describe("origin checks", () => {
       "http://christt105.github.io",
       "https://christt105.github.io/",
       "http://localhost.evil.com",
+      "http://cositalogo-api.christt105.workers.dev",
+      "https://cositalogo-apix.christt105.workers.dev",
+      "https://evil-cositalogo.christt105.workers.dev",
+      "https://cositalogo.christt105.workers.dev.evil.com",
     ]) {
       const res = await call("/movie/550", { headers: { Origin: origin } });
       assert.equal(res.status, 403, origin);

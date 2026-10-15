@@ -2,6 +2,7 @@ const TMDB = "https://api.themoviedb.org/3";
 
 const ALLOWED_ORIGINS = [
   /^https:\/\/christt105\.github\.io$/,
+  /^https:\/\/cositalogo(?:-api)?\.christt105\.workers\.dev$/,
   /^https?:\/\/localhost(:\d{1,5})?$/,
   /^https?:\/\/127\.0\.0\.1(:\d{1,5})?$/,
   /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d{1,5})?$/,
