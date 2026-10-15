@@ -1,73 +1,26 @@
-# Cositeca Telegram bot
+# Cositeca Telegram bot (retired)
 
-Cloudflare Worker that lets anyone with the passphrase add a Cositeca entry from
-Telegram, without touching GitHub. It walks through a short conversation (Telegram
-link, TMDB match confirmation, quality, languages, tags, poster) and then opens the
-same kind of issue the `Añadir cosita` form would, so the existing
-`.github/workflows/add-entry.yml` pipeline handles validation, the PR, the merge and
-the deploy exactly as it already does today. The bot never touches `scripts/`,
-workflows or issue templates directly.
+Cloudflare Worker behind the old Cositeca bot, which used to walk people through
+a short conversation and open an `Añadir cosita` issue for
+`.github/workflows/add-entry.yml`. That issue flow is frozen: the catalog now
+lives in the Cositálogo D1 and is edited from the web at
+https://cositalogo-api.christt105.workers.dev/, and `add-entry`, `batch` and
+`sweep` are disabled.
 
-TMDB search goes through the existing `cositeca-tmdb-proxy` worker
-(`site/rules.js#TMDB_PROXY_URL`) over the `TMDB_PROXY` service binding, so this
-worker doesn't need its own TMDB key. The proxy rejects requests without an allowed
-browser `Origin`, so the bot authenticates with an `X-Internal-Token` header holding
-the `INTERNAL_TOKEN` secret. Both deploy workflows upload it from the repository
-secret of the same name, so the two workers always share one value.
-`groups.yaml`, `qualities.yaml` and `languages.yaml` are fetched from the `main`
-branch on GitHub and cached in KV for an hour, so adding a new Telegram group there
-doesn't require redeploying this worker.
+The Worker now answers every private message, and any button left over from
+an old conversation, with a fixed text pointing to that web. It ignores
+messages from groups, no longer talks to GitHub (`/github-webhook` answers
+404) and no longer searches TMDB. It still deploys from
+`deploy-telegram-bot.yml` on pushes to `main` that touch this folder.
 
-## One-time setup
+`lib.js` and `parse.js` (the conversation helpers and the parser for the
+group's message format) are no longer used by the Worker but are kept, with
+their tests, until the issue flow is removed for good.
 
-1. **Create the Telegram bot**: talk to [@BotFather](https://t.me/BotFather),
-   `/newbot`, note the token.
-2. **Create the KV namespace**:
-   ```sh
-   cd tools/telegram-bot
-   XDG_CONFIG_HOME=~/scratch/xdg wrangler kv namespace create BOT_KV
-   ```
-   Copy the returned `id` into `wrangler.toml` (`REPLACE_ME`).
-3. **Create the dedicated GitHub account** that will open the issues (e.g.
-   `cositeca-telegram-bot`). Wait at least 24h before the first real use: the
-   existing anti-spam check in `scripts/lib.js` (`checkAntiSpam`) blocks issue
-   authors whose account is less than a day old.
-4. **Generate a fine-grained PAT** on that account, scoped only to
-   `christt105/cositeca`, permission `Issues: Read and write`.
-5. **Set the secrets** (from `tools/telegram-bot/`):
-   ```sh
-   XDG_CONFIG_HOME=~/scratch/xdg wrangler secret put TELEGRAM_BOT_TOKEN
-   XDG_CONFIG_HOME=~/scratch/xdg wrangler secret put TELEGRAM_WEBHOOK_SECRET   # any random string
-   XDG_CONFIG_HOME=~/scratch/xdg wrangler secret put BOT_PASSPHRASE
-   XDG_CONFIG_HOME=~/scratch/xdg wrangler secret put GITHUB_TOKEN
-   XDG_CONFIG_HOME=~/scratch/xdg wrangler secret put GITHUB_WEBHOOK_SECRET       # any random string
-   ```
-6. **Deploy**:
-   ```sh
-   XDG_CONFIG_HOME=~/scratch/xdg wrangler deploy
-   ```
-7. **Register the Telegram webhook** (replace `<token>` and both secrets):
-   ```sh
-   curl "https://api.telegram.org/bot<token>/setWebhook" \
-     -d "url=https://cositeca-telegram-bot.<account>.workers.dev/telegram-webhook" \
-     -d "secret_token=<TELEGRAM_WEBHOOK_SECRET>"
-   ```
-8. **Register the GitHub webhook**: repo Settings → Webhooks → Add webhook.
-   - Payload URL: `https://cositeca-telegram-bot.<account>.workers.dev/github-webhook`
-   - Content type: `application/json`
-   - Secret: `<GITHUB_WEBHOOK_SECRET>`
-   - Events: only `Issue comments`
+Secrets it still reads: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_WEBHOOK_SECRET`.
 
 ## Local dev
 
-`wrangler dev` needs a `.dev.vars` (copy `.dev.vars.example`, fill in real values,
-it's gitignored). Telegram/GitHub webhooks can't reach `localhost` directly; test the
-logic by `curl`-ing `/telegram-webhook` and `/github-webhook` with crafted payloads
-and the right secret headers instead of relying on live webhooks.
-
-Pure parsing/formatting logic (link validation, TMDB candidate formatting, issue body
-building, language keyboards) lives in `lib.js` and is covered by
-`test/telegram-bot.test.js` (`npm test`). The conversation orchestration in
-`worker.js` is integration-level and is exercised manually against `wrangler dev`,
-except for the TMDB search through the proxy, which `test/telegram-bot-proxy.test.js`
-runs end to end against the real proxy handler.
+`wrangler dev` needs a `.dev.vars` with those two values (it's gitignored).
+`test/telegram-bot-worker.test.js` (`npm test`) covers the replies by calling
+the Worker with crafted updates.
