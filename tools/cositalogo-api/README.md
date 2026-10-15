@@ -1,9 +1,10 @@
 # Cositálogo API
 
-Cloudflare Worker with a D1 database that will replace GitHub issues as the
-catalog's source of truth. The public site on GitHub Pages still reads the
-`catalog.json` built from the YAML files; the new web app in `web/` reads this
-API and is served by this same Worker (see [Web app](#web-app)).
+Cloudflare Worker with a D1 database that holds the catalog. Since the issue
+flow was frozen, D1 is the source of truth and the YAML files no longer change.
+The web app in `web/` reads and writes through this API and is served by this
+same Worker (see [Web app](#web-app)); the old GitHub Pages site only
+redirects here (`site/redirect.js`).
 
 ## Endpoints
 

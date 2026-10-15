@@ -4,73 +4,20 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>Cositeca</title>
+  <title>Cositálogo</title>
   <meta name="theme-color" content="#14161a">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Cositeca">
-  <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-  <link rel="stylesheet" href="style.css">
+  <script type="module" src="redirect.js"></script>
+  <noscript><meta http-equiv="refresh" content="0; url=https://cositalogo.christt105.workers.dev/"></noscript>
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #14161a; color: #e8e8e8; font: 16px/1.5 system-ui, sans-serif; text-align: center; padding: 1rem; box-sizing: border-box; }
+    a { color: #7cc4ff; }
+  </style>
 </head>
 <body>
-  <header class="header">
-    <a class="header__title" href="#/">Cositeca</a>
-    <div class="header__tools" id="header-tools">
-      <input id="search" class="search" type="search" placeholder="Busca por título, id de TMDB o IMDB">
-      <div class="filters" id="filters">
-        <button class="filter-toggle is-active" data-type="movie" aria-pressed="true">Películas</button>
-        <button class="filter-toggle is-active" data-type="series" aria-pressed="true">Series</button>
-        <button class="filter-panel-toggle" id="filter-panel-toggle" type="button" aria-label="Filtrar por género o etiqueta" aria-expanded="false">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
-        </button>
-        <div class="filter-panel hidden" id="filter-panel">
-          <select id="genre-filter" class="filter-select" aria-label="Género"><option value="">Género</option></select>
-          <select id="tag-filter" class="filter-select" aria-label="Etiqueta"><option value="">Etiqueta</option></select>
-        </div>
-      </div>
-    </div>
-    <label class="batch-toggle" id="batch-toggle">
-      <input type="checkbox" id="batch-mode-checkbox">
-      Modo lote
-    </label>
-    <a class="btn btn--ghost batch-badge hidden" id="batch-badge" href="#/batch">Cola (0)</a>
-    <a class="btn btn--add" id="add-btn" href="#/add">Añadir</a>
-  </header>
-
   <main>
-    <section id="view-grid" class="view">
-      <div id="grid" class="grid"></div>
-      <div id="empty" class="empty hidden">
-        <p>No está en la Cositeca. ¿La añades?</p>
-        <a class="btn btn--add" id="empty-add-btn" href="#/add">Añadir</a>
-      </div>
-      <div id="catalog-error" class="empty hidden">
-        <p>No se ha podido cargar el catálogo. Recarga la página para volver a intentarlo.</p>
-      </div>
-    </section>
-
-    <section id="view-title" class="view title hidden"></section>
-
-    <section id="view-add" class="view add hidden"></section>
-
-    <section id="view-batch" class="view hidden"></section>
-
-    <section id="view-missing" class="view empty hidden">
-      <p>Ese título no está en la Cositeca.</p>
-      <a class="btn" href="#/">Volver al catálogo</a>
-    </section>
+    <h1>El catálogo se ha mudado</h1>
+    <p>Esta página ya no se actualiza. Ahora está en<br><a id="new-site" href="https://cositalogo.christt105.workers.dev/">cositalogo.christt105.workers.dev</a></p>
   </main>
-
-  <footer class="footer">
-    <p class="footer__tmdb">
-      <a href="https://www.themoviedb.org" target="_blank" rel="noopener"><img class="footer__logo" src="assets/tmdb.svg" alt="TMDB"></a>
-      <span>This product uses the TMDB API but is not endorsed or certified by TMDB.</span>
-    </p>
-    <p><a href="https://github.com/christt105/cositeca/blob/main/GUIA.md" target="_blank" rel="noopener">Cómo añadir una cosita</a></p>
-  </footer>
-
-  <script src="app.js" type="module"></script>
 </body>
 </html>
