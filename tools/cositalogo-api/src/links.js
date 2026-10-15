@@ -160,7 +160,7 @@ export async function addLink(env, user, settings, body, now = Date.now()) {
   return link;
 }
 
-export async function updateLink(env, user, settings, id, body, now = Date.now()) {
+export async function updateLink(env, user, settings, id, body, now = Date.now(), reverts = null) {
   const db = env.DB;
   const row = await getLink(db, id);
   const before = linkView(row);
@@ -176,26 +176,27 @@ export async function updateLink(env, user, settings, id, body, now = Date.now()
     ).bind(cols.season, cols.quality, cols.audio, cols.subs, cols.tags, cols.url, cols.link_key, Math.max(now, row.updated_at + 1), row.id)
   );
   const after = viewOf(row, cols);
-  stmts.push(audit(db, user, "update", `link:${row.id}`, before, after, now));
+  stmts.push(audit(db, user, "update", `link:${row.id}`, before, after, now, reverts));
   await runWrites(db, stmts);
   await refreshTitle(db, row.type, row.tmdb_id, settings, now);
   return after;
 }
 
-export async function deleteLink(env, user, settings, id, now = Date.now()) {
+export async function deleteLink(env, user, settings, id, now = Date.now(), reverts = null) {
   const db = env.DB;
   const row = await getLink(db, id);
   assertCanRemove(user, row);
+  const before = { ...linkView(row), addedBy: row.added_by, createdAt: row.created_at };
   await db.batch([
     db.prepare("DELETE FROM links WHERE id = ?").bind(row.id),
-    audit(db, user, "delete", `link:${row.id}`, linkView(row), undefined, now),
+    audit(db, user, "delete", `link:${row.id}`, before, undefined, now, reverts),
     dropIfEmpty(db, row.type, row.tmdb_id),
   ]);
   await refreshTitle(db, row.type, row.tmdb_id, settings, now);
 }
 
 /** Moves a link to another title (and season), as reidentify does today, dropping the old title once it has no links. */
-export async function moveLink(env, user, settings, id, body, now = Date.now()) {
+export async function moveLink(env, user, settings, id, body, now = Date.now(), reverts = null) {
   const db = env.DB;
   const row = await getLink(db, id);
   assertCanRemove(user, row);
@@ -209,15 +210,48 @@ export async function moveLink(env, user, settings, id, body, now = Date.now()) 
       .bind(type, tmdbId, cols.season, Math.max(now, row.updated_at + 1), row.id)
   );
   const after = viewOf(row, { type, tmdb_id: tmdbId, season: cols.season });
-  stmts.push(audit(db, user, "move", `link:${row.id}`, before, after, now), dropIfEmpty(db, row.type, row.tmdb_id));
+  stmts.push(audit(db, user, "move", `link:${row.id}`, before, after, now, reverts), dropIfEmpty(db, row.type, row.tmdb_id));
   await runWrites(db, stmts);
   await refreshTitle(db, row.type, row.tmdb_id, settings, now);
   await refreshTitle(db, type, tmdbId, settings, now);
   return after;
 }
 
+/**
+ * Puts back a deleted link from the `before` its delete logged, keeping its
+ * id (and so its place) when no other link took it, its author and its
+ * creation time. A title that went with it is fetched from TMDB again.
+ */
+export async function restoreLink(env, user, settings, before, now = Date.now(), reverts = null) {
+  const db = env.DB;
+  const { type, tmdbId } = parseTarget(before.type, before.tmdb);
+  const cols = linkColumns(before, type, settings);
+  await assertKeyFree(db, cols.link_key);
+  const taken = await db.prepare("SELECT 1 FROM links WHERE id = ?").bind(before.id).first();
+  const addedBy = "addedBy" in before
+    ? before.addedBy
+    : (await db.prepare("SELECT user_id FROM audit WHERE action = 'add' AND target = ? ORDER BY id LIMIT 1").bind(`link:${before.id}`).first())?.user_id ?? null;
+  const stmts = await prepareTitle(env, type, tmdbId, cols.season, now);
+  stmts.push(
+    db.prepare(
+      "INSERT INTO links (id, type, tmdb_id, season, quality, audio, subs, tags, url, link_key, added_by, created_at, updated_at) " +
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *"
+    ).bind(taken ? null : before.id, type, tmdbId, cols.season, cols.quality, cols.audio, cols.subs, cols.tags, cols.url, cols.link_key, addedBy, before.createdAt ?? now, now)
+  );
+  const after = viewOf({ type, tmdb_id: tmdbId }, cols);
+  delete after.id;
+  stmts.push(
+    db.prepare("INSERT INTO audit (at, user_id, action, target, before, after, reverts) SELECT ?, ?, 'add', 'link:' || id, NULL, ?, ? FROM links WHERE link_key = ?")
+      .bind(now, user.id, JSON.stringify(after), reverts, cols.link_key)
+  );
+  const results = await runWrites(db, stmts);
+  const link = linkView(results.at(-2).results[0]);
+  await refreshTitle(db, type, tmdbId, settings, now);
+  return link;
+}
+
 /** Sets or, with `poster: null`, clears the manual poster of a title or of one of its seasons. */
-export async function setPoster(env, user, settings, type, tmdbId, body, now = Date.now()) {
+export async function setPoster(env, user, settings, type, tmdbId, body, now = Date.now(), reverts = null) {
   const db = env.DB;
   const row = await db.prepare("SELECT * FROM titles WHERE type = ? AND tmdb_id = ?").bind(type, tmdbId).first();
   if (!row) throw new HttpError(404, "no such title");
@@ -237,7 +271,7 @@ export async function setPoster(env, user, settings, type, tmdbId, body, now = D
       : db.prepare("UPDATE titles SET season_posters = json_set(season_posters, ?, ?), updated_at = ? WHERE type = ? AND tmdb_id = ?")
           .bind(`$."${season}"`, poster, touched, type, tmdbId);
   const before = season === null ? row.poster : parse(row.season_posters, {})[season] ?? null;
-  await db.batch([update, audit(db, user, "poster", season === null ? target : `${target}:${season}`, before, poster, now)]);
+  await db.batch([update, audit(db, user, "poster", season === null ? target : `${target}:${season}`, before, poster, now, reverts)]);
   await refreshTitle(db, type, tmdbId, settings, now);
 }
 

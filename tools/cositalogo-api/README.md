@@ -27,10 +27,31 @@ redirects here (`site/redirect.js`).
 | `POST /api/unlock` | signed in | `{ password }` makes the user a member |
 | `GET /api/members`, `DELETE /api/members/:id` | admin | List members, revoke one |
 | `GET /api/admins`, `PUT /api/admins/:id`, `DELETE /api/admins/:id` | admin | List admins, promote a member, remove another admin |
+| `GET /api/audit` | admin | The audit log, newest first: `{ entries, more }`; `?before=<id>` pages, `?title=movie:603` keeps one title and its links, `?limit=` up to 200 |
+| `POST /api/audit/:id/undo` | admin | Undo one write (see [Undo](#undo)); answers `{ id }` of the audit row that undid it |
 
 Writes need a session cookie (`s`) signed with `SESSION_SECRET`, a JSON body
 and the `member` role. Every write lands in the `audit` table in the same
 transaction, with the value before and after.
+
+## Undo
+
+Every write in `audit` keeps the value before and after. An admin can undo
+an `add`, `update`, `move`, `delete` or `poster` row: the API makes the
+opposite write through the same code as a normal one and logs it with
+`reverts` set to the undone row, so `GET /api/audit` can show `undoneBy`.
+
+- It only works while the link or poster is still exactly as that write
+  left it; otherwise it answers 409 and the later writes have to be undone
+  first, newest first.
+- A row can be undone once. Undoing the undo row redoes the write.
+- An undone delete gets its id back (and so its place in the title) unless a
+  new link took it, and keeps its author and creation time. Deletes logged
+  before `addedBy` was recorded take the author from the link's `add` row.
+  A title that disappeared with its last link is fetched from TMDB again,
+  without its manual poster; that comes back by undoing its own `poster`
+  row, if there was one.
+- Member and admin changes (`grant`, `revoke`) are not undone from here.
 
 ## Sign-in and roles
 
