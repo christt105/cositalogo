@@ -123,11 +123,7 @@ they need Node 22 or later for `node:sqlite`.
 
 ## Deploying
 
-The Worker is named `cositalogo` and lives on `workers.dev`. Its first name, `cositalogo-api`,
-is kept by the small Worker in `legacy-redirect/`: API calls get a 308 to the
-same path on the new origin and any other address a page that moves the
-browser to the same address there. It has no workflow; deploy it by hand
-from that folder with `wrangler deploy` if it ever changes.
+The Worker is named `cositalogo` and lives on `workers.dev`.
 
 `.github/workflows/deploy-cositalogo-api.yml` runs the tests (`npm test` and
 `npm run test:web`), builds the web app, applies pending D1 migrations,
