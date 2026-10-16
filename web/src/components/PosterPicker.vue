@@ -6,7 +6,8 @@ import { getTmdbPosters } from "../api/tmdb.js";
 /**
  * Lets the user keep TMDB's default poster or pick another one of the
  * title's TMDB posters, grouped by language. `v-model` is the chosen URL, or
- * null for the default. Shows nothing when TMDB has no other posters.
+ * null for the default; it is kept on mount and reset when the title changes.
+ * Shows nothing when TMDB has no other posters.
  */
 const props = defineProps({
   type: { type: String, required: true },
@@ -26,9 +27,9 @@ const rest = computed(() => (current.value ? current.value.posters.length - show
 
 watch(
   () => [props.type, props.tmdb],
-  async ([type, tmdb]) => {
+  async ([type, tmdb], previous) => {
     groups.value = [];
-    model.value = null;
+    if (previous) model.value = null;
     try {
       const loaded = await props.loadPosters(type, tmdb, props.originalLanguage);
       if (type !== props.type || tmdb !== props.tmdb) return;

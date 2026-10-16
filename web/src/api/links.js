@@ -23,3 +23,8 @@ export function deleteLink(id, options) {
 export function moveLink(id, target, options) {
   return request(`/api/links/${id}/move`, { method: "POST", body: target, ...options });
 }
+
+/** Sets the manual poster of a title, or with `null` goes back to TMDB's. */
+export function setPoster(type, id, poster, options) {
+  return request(`/api/titles/${type}/${id}/poster`, { method: "PUT", body: { poster }, ...options });
+}
