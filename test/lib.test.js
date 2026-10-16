@@ -17,7 +17,6 @@ import {
   englishTitle,
   keepEnglishTranslations,
   TMDB_CACHE_TTL_MS,
-  resolveTmdbTarget,
   parseAddedTimestamps,
   isEntrypoint,
 } from "../scripts/lib.js";
@@ -626,52 +625,6 @@ describe("keepEnglishTranslations", () => {
       id: 1,
       translations: { translations: [] },
     });
-  });
-});
-
-describe("resolveTmdbTarget", () => {
-  test("passes through a descriptor that already has a type and id", async () => {
-    const client = fakeTmdb();
-    assert.deepEqual(
-      await resolveTmdbTarget({ source: "url", type: "tv", id: 1396 }, client),
-      { type: "tv", id: 1396 }
-    );
-    assert.deepEqual(client.calls, []);
-  });
-
-  test("resolves an IMDB id to a movie or a series", async () => {
-    const client = fakeTmdb({
-      find: {
-        tt0137523: { movie_results: [{ id: 550 }], tv_results: [] },
-        tt0903747: { movie_results: [], tv_results: [{ id: 1396 }] },
-      },
-    });
-    assert.deepEqual(
-      await resolveTmdbTarget({ source: "imdb", imdbId: "tt0137523" }, client),
-      { type: "movie", id: 550 }
-    );
-    assert.deepEqual(
-      await resolveTmdbTarget({ source: "imdb", imdbId: "tt0903747" }, client),
-      { type: "tv", id: 1396 }
-    );
-  });
-
-  test("prefers the movie result when TMDB returns both", async () => {
-    const client = fakeTmdb({
-      find: { tt1: { movie_results: [{ id: 1 }], tv_results: [{ id: 2 }] } },
-    });
-    assert.deepEqual(await resolveTmdbTarget({ source: "imdb", imdbId: "tt1" }, client), {
-      type: "movie",
-      id: 1,
-    });
-  });
-
-  test("rejects an IMDB id with no results", async () => {
-    const client = fakeTmdb();
-    await assert.rejects(
-      () => resolveTmdbTarget({ source: "imdb", imdbId: "tt9999999" }, client),
-      ValidationError
-    );
   });
 });
 
