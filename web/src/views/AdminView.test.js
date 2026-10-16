@@ -18,7 +18,6 @@ afterEach(() => {
 });
 
 async function mount(query = "", routes = {}, user = ADMIN) {
-  history.replaceState(null, "", `/#/admin${query ? `?${query}` : ""}`);
   let catalogLoads = 0;
   const api = fakeApi({
     "GET /api/catalog": () => (++catalogLoads, [{ type: "movie", tmdb: 603, title: "Matrix", links: [] }]),
@@ -29,7 +28,7 @@ async function mount(query = "", routes = {}, user = ADMIN) {
     "GET /api/admins": [{ id: 9, name: "Jefa", since: 0 }, { id: 8, name: "Bea", since: 3 }],
     ...routes,
   });
-  view = await mountView(AdminView, { query: new URLSearchParams(query) });
+  view = await mountView(AdminView, { query: new URLSearchParams(query) }, `/admin${query ? `?${query}` : ""}`);
   await settle();
   return { api, catalogLoads: () => catalogLoads };
 }
@@ -45,7 +44,7 @@ describe("AdminView", () => {
 
   it("asks a visitor to sign in", async () => {
     await mount("", {}, json({}, 401));
-    expect(button(view.root, "Iniciar sesión").getAttribute("href")).toBe("#/login?next=%2Fadmin");
+    expect(button(view.root, "Iniciar sesión").getAttribute("href")).toBe("/login?next=%2Fadmin");
   });
 
   it("lists the activity with names, details and undo only where it still applies", async () => {
@@ -91,7 +90,7 @@ describe("AdminView", () => {
     expect(button(view.root, "Ver más")).toBeNull();
   });
 
-  it("keeps one title's history when the hash says so", async () => {
+  it("keeps one title's history when the query says so", async () => {
     const { api } = await mount("title=movie:603", { "GET /api/audit?title=movie%3A603": { entries: [ENTRIES[0]], more: false } });
     expect(api.calls.some((c) => c.path === "/api/audit?title=movie%3A603")).toBe(true);
     expect(view.root.textContent).toContain("Solo los cambios de Matrix");

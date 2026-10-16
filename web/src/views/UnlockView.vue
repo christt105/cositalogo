@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref } from "vue";
+import { RouterLink, useRouter } from "vue-router";
 import { unlock } from "../api/session.js";
 import { useSession } from "../composables/useSession.js";
 import { errorMessage } from "../lib/errors.js";
@@ -8,6 +9,7 @@ import { nextPath, withNext } from "../lib/route.js";
 const props = defineProps({ query: { type: URLSearchParams, required: true } });
 
 const session = useSession();
+const router = useRouter();
 const password = ref("");
 const busy = ref(false);
 const error = ref("");
@@ -18,7 +20,7 @@ async function submit() {
   error.value = "";
   try {
     session.setUser(await unlock(password.value));
-    location.hash = `#${nextPath(props.query)}`;
+    router.push(nextPath(props.query));
   } catch (err) {
     if (err.status === 403) error.value = "Esa no es la contraseña.";
     else if (err.status === 429) error.value = "Demasiados intentos fallidos. Espera una hora y vuelve a probar.";
@@ -38,11 +40,11 @@ async function submit() {
     <p v-if="session.status.value === 'loading'">Comprobando la sesión…</p>
     <template v-else-if="!session.user.value">
       <p>Primero tienes que iniciar sesión.</p>
-      <a class="btn btn--primary" :href="loginHref">Iniciar sesión</a>
+      <RouterLink class="btn btn--primary" :to="loginHref">Iniciar sesión</RouterLink>
     </template>
     <template v-else-if="session.user.value.member">
       <p>Ya puedes añadir y cambiar enlaces.</p>
-      <a class="btn btn--primary" href="#/add">Añadir</a>
+      <RouterLink class="btn btn--primary" to="/add">Añadir</RouterLink>
     </template>
     <form v-else class="form" @submit.prevent="submit">
       <p>Para añadir o cambiar enlaces hace falta la contraseña que se comparte en el grupo. Solo se pide una vez.</p>

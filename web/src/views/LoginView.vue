@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, ref } from "vue";
+import { RouterLink, useRouter } from "vue-router";
 import { pollLogin, startLogin } from "../api/session.js";
 import { useSession } from "../composables/useSession.js";
 import { nextPath } from "../lib/route.js";
@@ -9,6 +10,7 @@ const POLL_MS = 2500;
 const props = defineProps({ query: { type: URLSearchParams, required: true } });
 
 const session = useSession();
+const router = useRouter();
 const state = ref("idle");
 const link = ref(null);
 const expiresAt = ref(0);
@@ -56,7 +58,7 @@ async function poll() {
     stop();
     session.setUser(answer);
     state.value = "done";
-    location.hash = `#${nextPath(props.query)}`;
+    router.push(nextPath(props.query));
   } catch (err) {
     if (state.value !== "waiting") return;
     stop();
@@ -77,7 +79,7 @@ onBeforeUnmount(stop);
     <h1 class="panel__title">Iniciar sesión</h1>
     <template v-if="session.user.value && state !== 'done'">
       <p>Ya has iniciado sesión como <strong>{{ session.user.value.name }}</strong>.</p>
-      <a class="btn" href="#/">Volver al catálogo</a>
+      <RouterLink class="btn" to="/">Volver al catálogo</RouterLink>
     </template>
     <template v-else-if="state === 'idle' || state === 'starting'">
       <p>Se inicia sesión con el bot de Telegram del Cositálogo: te da un enlace, lo abres, pulsas Iniciar y esta página se entera sola.</p>

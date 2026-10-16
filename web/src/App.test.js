@@ -67,7 +67,32 @@ describe("App", () => {
     vi.advanceTimersByTime(150);
     await nextTick();
     expect(titles()).toEqual(["El club de la lucha"]);
-    expect(location.hash).toBe("#/?q=fight");
+    vi.useRealTimers();
+    await settle();
+    expect(location.pathname + location.search).toBe("/?q=fight");
+    expect(router.currentRoute.value.fullPath).toBe("/?q=fight");
+  });
+
+  it("keeps what the user is typing when the search lands in the query", async () => {
+    await mount("/");
+    vi.useFakeTimers();
+    const input = root.querySelector(".search");
+    input.value = "fight ";
+    input.dispatchEvent(new Event("input"));
+    vi.advanceTimersByTime(150);
+    vi.useRealTimers();
+    await settle();
+    expect(router.currentRoute.value.fullPath).toBe("/?q=fight");
+    expect(input.value).toBe("fight ");
+  });
+
+  it("opens a title page from its card without reloading", async () => {
+    await mount("/");
+    root.querySelector("a.card").click();
+    await settle();
+    expect(location.pathname).toBe("/movie/550");
+    expect(fetch).toHaveBeenCalledWith("/api/titles/movie/550", expect.anything());
+    expect(fetch.mock.calls.filter(([path]) => path === "/api/catalog")).toHaveLength(1);
   });
 
   it("follows a navigation", async () => {
@@ -103,17 +128,17 @@ describe("App", () => {
 
   it("links every card to its title page", async () => {
     await mount("/");
-    expect([...root.querySelectorAll("a.card")].map((a) => a.getAttribute("href"))).toEqual(["#/movie/550", "#/series/1399"]);
+    expect([...root.querySelectorAll("a.card")].map((a) => a.getAttribute("href"))).toEqual(["/movie/550", "/series/1399"]);
   });
 
   it("offers to sign in when there is no session", async () => {
     await mount("/?q=fight");
-    expect(root.querySelector(".header__session a").getAttribute("href")).toBe("#/login");
+    expect(root.querySelector(".header__session a").getAttribute("href")).toBe("/login");
   });
 
   it("shows a way back for any other route", async () => {
     await mount("/nope/550");
     expect(root.querySelector(".grid")).toBeNull();
-    expect(root.querySelector('a.btn[href="#/"]')).not.toBeNull();
+    expect(root.querySelector('a.btn[href="/"]')).not.toBeNull();
   });
 });

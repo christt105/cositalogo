@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from "vue";
+import { RouterLink } from "vue-router";
 import AuditLog from "../components/AuditLog.vue";
 import MembersPanel from "../components/MembersPanel.vue";
 import { useCatalog } from "../composables/useCatalog.js";
@@ -27,17 +28,17 @@ const loginHref = computed(() => withNext("/login", "/admin"));
     <p v-if="session.status.value === 'loading'" class="empty">Comprobando la sesión…</p>
     <section v-else-if="!session.user.value" class="empty">
       <p>Inicia sesión con Telegram para entrar.</p>
-      <a class="btn btn--primary" :href="loginHref">Iniciar sesión</a>
+      <RouterLink class="btn btn--primary" :to="loginHref">Iniciar sesión</RouterLink>
     </section>
     <p v-else-if="!session.user.value.admin" class="empty">Esta parte es solo para admins.</p>
     <template v-else>
       <nav class="poster-tabs" aria-label="Secciones">
-        <a class="poster-tab" :class="{ 'is-active': tab === 'activity' }" href="#/admin">Actividad</a>
-        <a class="poster-tab" :class="{ 'is-active': tab === 'members' }" href="#/admin?tab=members">Miembros</a>
+        <RouterLink class="poster-tab" :class="{ 'is-active': tab === 'activity' }" to="/admin">Actividad</RouterLink>
+        <RouterLink class="poster-tab" :class="{ 'is-active': tab === 'members' }" to="/admin?tab=members">Miembros</RouterLink>
       </nav>
       <template v-if="tab === 'activity'">
         <p v-if="title" class="panel__hint">
-          Solo los cambios de <a :href="`#/${title.replace(':', '/')}`">{{ titleLabel }}</a> · <a href="#/admin">ver todos</a>
+          Solo los cambios de <RouterLink :to="`/${title.replace(':', '/')}`">{{ titleLabel }}</RouterLink> · <RouterLink to="/admin">ver todos</RouterLink>
         </p>
         <AuditLog :title="title" />
       </template>

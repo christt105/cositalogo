@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from "vue";
+import { RouterLink } from "vue-router";
 import { useSession } from "../composables/useSession.js";
 import { withNext } from "../lib/route.js";
 
@@ -15,10 +16,10 @@ const unlockHref = computed(() => withNext("/unlock", props.path));
   <p v-else-if="session.status.value === 'loading'" class="empty">Comprobando la sesión…</p>
   <section v-else-if="!session.user.value" class="empty">
     <p>Para añadir o cambiar enlaces tienes que iniciar sesión con Telegram.</p>
-    <a class="btn btn--primary" :href="loginHref">Iniciar sesión</a>
+    <RouterLink class="btn btn--primary" :to="loginHref">Iniciar sesión</RouterLink>
   </section>
   <section v-else class="empty">
     <p>Antes de escribir, desbloquea la escritura con la contraseña del grupo.</p>
-    <a class="btn btn--primary" :href="unlockHref">Desbloquear</a>
+    <RouterLink class="btn btn--primary" :to="unlockHref">Desbloquear</RouterLink>
   </section>
 </template>

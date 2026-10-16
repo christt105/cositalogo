@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, shallowRef, watch } from "vue";
+import { RouterLink, useRouter } from "vue-router";
 import { getTitle } from "../api/catalog.js";
 import { deleteLink, getTitleLinks, moveLink, setPoster, updateLink } from "../api/links.js";
 import { getTmdbTitle } from "../api/tmdb.js";
@@ -19,6 +20,7 @@ const props = defineProps({
 
 const catalog = useCatalog();
 const session = useSession();
+const router = useRouter();
 const entry = shallowRef(null);
 const owned = shallowRef([]);
 const seasons = shallowRef([]);
@@ -104,8 +106,8 @@ async function move(link, target, done) {
   const stays = links.value.length > 1;
   if (!(await write(() => moveLink(link.id, target)))) return;
   done();
-  if (stays) moved.value = `#/${target.type}/${target.tmdb}`;
-  else location.hash = `#/${target.type}/${target.tmdb}`;
+  if (stays) moved.value = `/${target.type}/${target.tmdb}`;
+  else router.push(`/${target.type}/${target.tmdb}`);
 }
 
 async function savePoster(poster) {
@@ -119,7 +121,7 @@ function remove(link) {
 
 <template>
   <section class="panel">
-    <a class="back" href="#/">&larr; Volver al catálogo</a>
+    <RouterLink class="back" to="/">&larr; Volver al catálogo</RouterLink>
     <p v-if="state === 'loading'" class="empty">Cargando…</p>
     <p v-else-if="state === 'missing'" class="empty">Este título no está en el Cositálogo.</p>
     <p v-else-if="state === 'error'" class="empty">No se ha podido cargar. Recarga la página para volver a intentarlo.</p>
@@ -133,9 +135,9 @@ function remove(link) {
             <template v-if="entry.originalTitle && entry.originalTitle !== entry.title"> · {{ entry.originalTitle }}</template>
           </p>
           <div class="selected__actions">
-            <a v-if="session.canWrite.value" class="btn btn--primary" :href="`#/add?type=${entry.type}&tmdb=${entry.tmdb}`">Añadir otra versión</a>
+            <RouterLink v-if="session.canWrite.value" class="btn btn--primary" :to="`/add?type=${entry.type}&tmdb=${entry.tmdb}`">Añadir otra versión</RouterLink>
             <button v-if="session.canWrite.value && !editingPoster" type="button" class="btn" @click="editingPoster = true">Cambiar portada</button>
-            <a v-if="session.user.value?.admin" class="btn btn--link" :href="`#/admin?title=${entry.type}:${entry.tmdb}`">Historial</a>
+            <RouterLink v-if="session.user.value?.admin" class="btn btn--link" :to="`/admin?title=${entry.type}:${entry.tmdb}`">Historial</RouterLink>
           </div>
         </div>
       </div>
@@ -151,7 +153,7 @@ function remove(link) {
         @cancel="editingPoster = false"
       />
       <p v-if="error" class="form__error" role="alert">{{ error }}</p>
-      <p v-if="moved" class="panel__hint" role="status">Enlace movido. <a :href="moved">Ver dónde ha quedado</a></p>
+      <p v-if="moved" class="panel__hint" role="status">Enlace movido. <RouterLink :to="moved">Ver dónde ha quedado</RouterLink></p>
       <ul class="links">
         <LinkRow
           v-for="(link, i) in links"

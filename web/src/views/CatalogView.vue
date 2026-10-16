@@ -1,16 +1,17 @@
 <script setup>
 import { computed, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 import TitleCard from "../components/TitleCard.vue";
 import { useCatalog } from "../composables/useCatalog.js";
 import { searchCatalog } from "../lib/catalog.js";
 import { debounce } from "../lib/debounce.js";
-import { gridHash } from "../lib/route.js";
 
 const SEARCH_DEBOUNCE_MS = 150;
 
 const props = defineProps({ query: { type: URLSearchParams, required: true } });
 
 const catalog = useCatalog();
+const router = useRouter();
 const status = catalog.status;
 const input = ref(props.query.get("q") ?? "");
 const query = ref(input.value);
@@ -19,12 +20,13 @@ const items = computed(() => searchCatalog(catalog.items.value, query.value));
 
 const commitSearch = debounce(() => {
   query.value = input.value.trim();
-  history.replaceState(null, "", gridHash(query.value));
+  router.replace({ query: query.value ? { q: query.value } : {} });
 }, SEARCH_DEBOUNCE_MS);
 
 watch(
   () => props.query.get("q") ?? "",
   (q) => {
+    if (q === query.value) return;
     input.value = q;
     query.value = q;
   }
