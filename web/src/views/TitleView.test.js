@@ -161,6 +161,13 @@ describe("TitleView", () => {
     expect(button(view.root, "Cambiar portada")).toBeNull();
   });
 
+  it("links to the title on TMDB for everyone", async () => {
+    await mount(null);
+    const a = view.root.querySelector("a[href='https://www.themoviedb.org/tv/1399']");
+    expect(a.textContent).toBe("TMDB");
+    expect(a.getAttribute("rel")).toContain("noopener");
+  });
+
   it("links admins to the title's history", async () => {
     await mount({ id: 9, name: "Jefa", member: true, admin: true });
     expect(view.root.querySelector("a[href='/admin?title=series:1399']").textContent).toBe("Historial");

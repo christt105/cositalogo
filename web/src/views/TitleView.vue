@@ -137,6 +137,7 @@ function remove(link) {
           <div class="selected__actions">
             <RouterLink v-if="session.canWrite.value" class="btn btn--primary" :to="`/add?type=${entry.type}&tmdb=${entry.tmdb}`">Añadir otra versión</RouterLink>
             <button v-if="session.canWrite.value && !editingPoster" type="button" class="btn" @click="editingPoster = true">Cambiar portada</button>
+            <a class="btn btn--link" :href="`https://www.themoviedb.org/${entry.type === 'movie' ? 'movie' : 'tv'}/${entry.tmdb}`" target="_blank" rel="noopener noreferrer">TMDB</a>
             <RouterLink v-if="session.user.value?.admin" class="btn btn--link" :to="`/admin?title=${entry.type}:${entry.tmdb}`">Historial</RouterLink>
           </div>
         </div>
