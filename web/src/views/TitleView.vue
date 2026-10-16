@@ -1,9 +1,10 @@
 <script setup>
 import { computed, ref, shallowRef, watch } from "vue";
 import { getTitle } from "../api/catalog.js";
-import { deleteLink, getTitleLinks, moveLink, updateLink } from "../api/links.js";
+import { deleteLink, getTitleLinks, moveLink, setPoster, updateLink } from "../api/links.js";
 import { getTmdbTitle } from "../api/tmdb.js";
 import LinkRow from "../components/LinkRow.vue";
+import PosterForm from "../components/PosterForm.vue";
 import { useCatalog } from "../composables/useCatalog.js";
 import { useSession } from "../composables/useSession.js";
 import { TYPE_LABELS } from "../lib/catalog.js";
@@ -13,6 +14,7 @@ const props = defineProps({
   type: { type: String, required: true },
   id: { type: String, required: true },
   loadTmdb: { type: Function, default: getTmdbTitle },
+  loadPosters: { type: Function, default: undefined },
 });
 
 const catalog = useCatalog();
@@ -24,6 +26,7 @@ const state = ref("loading");
 const busy = ref(false);
 const error = ref("");
 const moved = ref("");
+const editingPoster = ref(false);
 const seasonsReady = ref(props.type !== "series");
 let seasonsLoaded = false;
 
@@ -62,6 +65,7 @@ async function load() {
 }
 
 watch(() => [props.type, props.id], load, { immediate: true });
+watch(() => [props.type, props.id], () => (editingPoster.value = false));
 watch(() => session.user.value?.id, loadLinks);
 
 async function loadSeasons() {
@@ -104,6 +108,10 @@ async function move(link, target, done) {
   else location.hash = `#/${target.type}/${target.tmdb}`;
 }
 
+async function savePoster(poster) {
+  if (await write(() => setPoster(props.type, props.id, poster))) editingPoster.value = false;
+}
+
 function remove(link) {
   write(() => deleteLink(link.id));
 }
@@ -125,9 +133,21 @@ function remove(link) {
             <template v-if="entry.originalTitle && entry.originalTitle !== entry.title"> · {{ entry.originalTitle }}</template>
           </p>
           <a v-if="session.canWrite.value" class="btn btn--primary" :href="`#/add?type=${entry.type}&tmdb=${entry.tmdb}`">Añadir otra versión</a>
+          <button v-if="session.canWrite.value && !editingPoster" type="button" class="btn" @click="editingPoster = true">Cambiar portada</button>
           <a v-if="session.user.value?.admin" class="btn btn--link" :href="`#/admin?title=${entry.type}:${entry.tmdb}`">Historial</a>
         </div>
       </div>
+      <PosterForm
+        v-if="editingPoster && session.canWrite.value"
+        :type="entry.type"
+        :tmdb="entry.tmdb"
+        :current="entry.poster"
+        :busy="busy"
+        :load-title="loadTmdb"
+        v-bind="loadPosters ? { loadPosters } : {}"
+        @save="savePoster"
+        @cancel="editingPoster = false"
+      />
       <p v-if="error" class="form__error" role="alert">{{ error }}</p>
       <p v-if="moved" class="panel__hint" role="status">Enlace movido. <a :href="moved">Ver dónde ha quedado</a></p>
       <ul class="links">

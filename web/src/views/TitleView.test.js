@@ -20,7 +20,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-async function mount(user, routes = {}) {
+async function mount(user, routes = {}, props = {}) {
   history.replaceState(null, "", "/#/series/1399");
   let catalogLoads = 0;
   let current = entry([[1, "1080p", L1], [2, "4K", L2]]);
@@ -36,7 +36,7 @@ async function mount(user, routes = {}) {
     type, tmdb, title: type === "movie" ? "Matrix" : "Juego de tronos", year: "", poster: null,
     seasons: type === "movie" ? [] : [{ season_number: 1, name: "Temporada 1" }, { season_number: 2, name: "Temporada 2" }],
   }));
-  view = await mountView(TitleView, { type: "series", id: "1399", loadTmdb });
+  view = await mountView(TitleView, { type: "series", id: "1399", loadTmdb, ...props });
   await settle();
   return { api, loadTmdb, setEntry: (next) => (current = next), catalogLoads: () => catalogLoads };
 }
@@ -115,6 +115,51 @@ describe("TitleView", () => {
     await settle();
     expect(api.calls.find((c) => c.method === "DELETE").path).toBe("/api/links/11");
     expect(view.root.textContent).toContain("no está en el Cositálogo");
+  });
+
+  const POSTERS = [{ key: "es", label: "Castellano", posters: [{ value: "https://img.test/w342/es.jpg", thumb: "https://img.test/w185/es.jpg" }] }];
+
+  it("changes the poster of the title and reloads it", async () => {
+    const { api, setEntry, catalogLoads } = await mount({ id: 7, name: "Ana", member: true, admin: false }, {
+      "PUT /api/titles/series/1399/poster": json(undefined, 204),
+    }, { loadPosters: async () => POSTERS });
+    button(view.root, "Cambiar portada").click();
+    await settle();
+    const save = button(view.root, "Guardar portada");
+    expect(view.root.querySelector(".poster-default .poster").classList.contains("is-active")).toBe(true);
+    expect(save.disabled).toBe(true);
+    view.root.querySelector(".poster-grid .poster").click();
+    await settle(1);
+    setEntry({ ...entry([[1, "1080p", L1]]), poster: "https://img.test/w342/es.jpg" });
+    save.click();
+    await settle();
+    expect(api.calls.find((c) => c.method === "PUT").body).toEqual({ poster: "https://img.test/w342/es.jpg" });
+    expect(catalogLoads()).toBe(2);
+    expect(view.root.querySelector(".selected__poster").getAttribute("src")).toBe("https://img.test/w342/es.jpg");
+    expect(button(view.root, "Guardar portada")).toBeNull();
+  });
+
+  it("starts the poster form on the current manual poster and can go back to TMDB's", async () => {
+    const { api, setEntry } = await mount({ id: 7, name: "Ana", member: true, admin: false }, {
+      "PUT /api/titles/series/1399/poster": json(undefined, 204),
+    }, { loadPosters: async () => POSTERS });
+    setEntry({ ...entry([[1, "1080p", L1]]), poster: "https://img.test/w342/es.jpg" });
+    view.unmount();
+    view = await mountView(TitleView, { type: "series", id: "1399", loadTmdb: async () => ({ poster: "https://img.test/w342/tmdb.jpg", seasons: [] }), loadPosters: async () => POSTERS });
+    await settle();
+    button(view.root, "Cambiar portada").click();
+    await settle();
+    expect(view.root.querySelector(".poster-grid .poster").classList.contains("is-active")).toBe(true);
+    view.root.querySelector(".poster-default .poster").click();
+    await settle(1);
+    button(view.root, "Guardar portada").click();
+    await settle();
+    expect(api.calls.find((c) => c.method === "PUT").body).toEqual({ poster: null });
+  });
+
+  it("offers changing the poster only to members", async () => {
+    await mount({ id: 7, name: "Ana", member: false, admin: false });
+    expect(button(view.root, "Cambiar portada")).toBeNull();
   });
 
   it("links admins to the title's history", async () => {
