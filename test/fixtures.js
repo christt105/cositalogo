@@ -24,25 +24,6 @@ export function yaml(data) {
   return dump(data);
 }
 
-export function fakeFs(files = {}) {
-  const store = new Map(Object.entries(files));
-  return {
-    store,
-    fileExists: (path) => store.has(path),
-    readFile: (path) => {
-      if (!store.has(path)) throw new Error(`ENOENT: ${path}`);
-      return store.get(path);
-    },
-    readdir: (dir) => {
-      const names = [...store.keys()]
-        .filter((path) => path.startsWith(`${dir}/`))
-        .map((path) => path.slice(dir.length + 1));
-      if (names.length === 0) throw new Error(`ENOENT: ${dir}`);
-      return names;
-    },
-  };
-}
-
 export function fakeTmdb({ movies = {}, tv = {}, find = {} } = {}) {
   const calls = [];
   function lookup(kind, table, id) {
@@ -65,7 +46,6 @@ export function fakeTmdb({ movies = {}, tv = {}, find = {} } = {}) {
 }
 
 export const MOVIE_INFO = { id: 550, title: "El club de la lucha", poster_path: "/a.jpg" };
-export const TV_INFO = { id: 1396, name: "Breaking Bad", poster_path: "/b.jpg" };
 
 const CATALOG_MOVIES = {
   550: { id: 550, title: "El club de la lucha", original_title: "Fight Club", imdb_id: "tt0137523", release_date: "1999-10-15", poster_path: "/fc.jpg", genres: [{ name: "Drama" }] },

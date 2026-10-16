@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, mkdirSync, realpathSync } from "node:fs";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ValidationError, keepEnglishTranslations, hasTranslations } from "./validation.js";
+import { keepEnglishTranslations, hasTranslations } from "./validation.js";
 
 export * from "./validation.js";
 
@@ -105,20 +105,6 @@ export function createTmdbClient(apiKey, { cache = {}, now = () => Date.now() } 
     posterUrl: (path) =>
       path ? `https://image.tmdb.org/t/p/w342${path}` : null,
   };
-}
-
-export async function resolveTmdbTarget(descriptor, tmdbClient) {
-  if (descriptor.source === "imdb") {
-    const found = await tmdbClient.findByImdb(descriptor.imdbId);
-    if (found.movie_results?.length) {
-      return { type: "movie", id: found.movie_results[0].id };
-    }
-    if (found.tv_results?.length) {
-      return { type: "tv", id: found.tv_results[0].id };
-    }
-    throw new ValidationError(`IMDB id not found on TMDB: ${descriptor.imdbId}`);
-  }
-  return { type: descriptor.type, id: descriptor.id };
 }
 
 /** True when the module at `moduleUrl` is the script node was started with, following symlinks. */
