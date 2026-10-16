@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test test/*.test.js",
+    "test": "npm run test:server && npm run test:web",
+    "test:server": "node --test test/*.test.js",
     "test:web": "vitest run",
     "build:web": "vite build",
     "dev:web": "vite"

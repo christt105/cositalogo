@@ -24,8 +24,9 @@ Node 22 or later (the tests use `node:sqlite`).
 
 ```sh
 npm ci
-npm test            # Node tests in test/
-npm run test:web    # Vitest for web/
+npm test              # both suites
+npm run test:server   # Node tests in test/
+npm run test:web      # Vitest for web/
 npm run build:web   # builds web/ into tools/cositalogo-api/dist
 npm run dev:web     # Vite dev server, proxies /api to wrangler dev on :8787
 ```
@@ -37,7 +38,7 @@ Nothing in the tests reaches the network.
 
 ## CI and deploys
 
-- `ci.yml` runs both test suites and the web build on every pull request and
+- `ci.yml` runs both test suites (`npm test`) and the web build on every pull request and
   push to `main`.
 - `deploy-cositalogo-api.yml` and `deploy-tmdb-proxy.yml` deploy their
   Worker on pushes to `main` that touch it. Worker secrets live in

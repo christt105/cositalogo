@@ -31,7 +31,7 @@ another proxy.
 
 Put `TMDB_API_KEY=...` in `tools/tmdb-proxy/.dev.vars` (gitignored) and run
 `wrangler dev` from this folder; it listens on `localhost:8787`. The tests
-are `test/worker.test.js` (`npm test`).
+are `test/tmdb-proxy.test.js` (`npm run test:server`).
 
 ## Deploy
 

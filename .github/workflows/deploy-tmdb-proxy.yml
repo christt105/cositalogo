@@ -24,7 +24,7 @@ jobs:
         with:
           node-version: "22"
       - run: npm ci
-      - run: npm test
+      - run: npm run test:server
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
