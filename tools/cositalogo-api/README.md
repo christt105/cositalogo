@@ -1,11 +1,8 @@
 # Cositálogo API
 
 Cloudflare Worker with a D1 database that holds the catalog, the only source
-of truth. The web app in `web/` reads and writes through this API and is
-served by this same Worker (see [Web app](#web-app)). The old GitHub Pages
-address, christt105.github.io/cositeca, is now the separate
-[christt105/cositeca](https://github.com/christt105/cositeca) repository and
-only redirects here.
+of truth. The web app in `web/` (see its [README](../../web/README.md)) reads and
+writes through this API and is served by this same Worker as static assets.
 
 ## Endpoints
 
@@ -109,7 +106,7 @@ printf 'TMDB_API_KEY=...\nSESSION_SECRET=any-local-secret\nTELEGRAM_WEBHOOK_SECR
 wrangler d1 migrations apply cositalogo --local
 node backup/restore.js <backup checkout> --out restore.sql   # real data from the backup repository
 wrangler d1 execute cositalogo --local --file restore.sql
-npm run build:web   # from the repository root, see below
+npm run build:web   # from the repository root, see web/README.md
 wrangler dev
 ```
 
@@ -124,66 +121,9 @@ A session cookie for local testing can be signed with `signSession` from
 against an in-memory SQLite with the real migrations (`test/d1-shim.js`), so
 they need Node 22 or later for `node:sqlite`.
 
-## Web app
-
-`web/` is a Vue 3 app built with Vite (`vite.config.js` at the repository
-root) into `tools/cositalogo-api/dist/`, which is gitignored and uploaded as
-the Worker's [static assets](https://developers.cloudflare.com/workers/static-assets/).
-`run_worker_first = ["/api/*"]` in `wrangler.toml` sends every API request
-to the Worker before looking at the files, so a file can never shadow an
-endpoint; any other path is served from the build, and one with no file
-falls through to the Worker, which answers the usual JSON 404. Static files
-do not run the Worker, so they cost no Worker CPU.
-
-Serving the web from the API's own origin is what lets it sign in later: the
-session cookie is `SameSite=Lax` and the API sends no CORS headers, so a page
-on another site could neither send the cookie nor read the answers.
-
-Screens: the grid with search (`matchesSearch` from `shared/rules.js`) over
-`GET /api/catalog`, with the search kept in the hash (`#/?q=...`); a title
-page (`#/movie/:id`, `#/series/:id`) over `GET /api/titles/...`, where
-members add another version, edit, delete or move links and change the
-poster; sign-in (`#/login`, opens the bot link and polls
-`POST /api/login/poll`); unlock (`#/unlock`, the shared password); Add
-(`#/add`, TMDB search through `cositeca-tmdb-proxy`, poster picker for new
-titles, season, quality, languages, tags and a Telegram link checked with
-`web/src/lib/forms.js`); and Admin (`#/admin`, the audit log with undo, a
-title's history with `?title=`, and members and admins). Every write reloads
-the shared catalog. There is no service worker. `web/public/_headers` adds
-`X-Robots-Tag: noindex` to every file (the page also has the `robots` meta)
-and long-lived caching to the hashed files under `/assets/`.
-
-`web/src/` is split by responsibility:
-
-- `api/`: `client.js` makes every call (same origin, JSON bodies with their
-  content type, errors as `ApiError` with the `status`), with one module per
-  resource on top; `tmdb.js` talks to the TMDB proxy instead.
-- `composables/`: reactive state. `useCatalog` is created once in `App.vue`
-  and shared with `provide`/`inject`; it holds the titles, an index by
-  `type/tmdb`, the loading status and `reload()`. `useSession` (who is signed
-  in) and `useSettings` (qualities, groups and languages, loaded on first
-  use) are provided the same way.
-- `views/`: one per route, listed in `routes.js`; `lib/route.js` matches the
-  hash against that table and anything else shows `NotFoundView`.
-- `components/`: pieces of a screen (`LinkForm`, `LinkRow`, `MoveForm`,
-  `PosterPicker`, `TmdbSearch`, `AuditLog`, `MembersPanel`, and `WriteGate`,
-  which only shows its content to members).
-- `lib/`: plain functions without Vue (form checks, poster grouping, audit
-  labels, routing), each with its Vitest file next to it.
-
-```sh
-npm run build:web    # writes tools/cositalogo-api/dist
-npm run dev:web      # Vite dev server, proxies /api to wrangler dev on :8787
-npm run test:web     # Vitest + happy-dom
-```
-
-`npm run dev:web` needs `wrangler dev` running on its default port; Vite's
-dev server does not apply `_headers`.
-
 ## Deploying
 
-The Worker is named `cositalogo` and answers at
-https://cositalogo.christt105.workers.dev/. Its first name, `cositalogo-api`,
+The Worker is named `cositalogo` and lives on `workers.dev`. Its first name, `cositalogo-api`,
 is kept by the small Worker in `legacy-redirect/`: API calls get a 308 to the
 same path on the new origin and any other address a page that moves the
 browser there keeping its `#/...` route. It has no workflow; deploy it by hand
