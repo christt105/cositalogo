@@ -1,8 +1,10 @@
 import { vi } from "vitest";
 import { createApp, defineComponent, h, nextTick } from "vue";
+import { createMemoryHistory } from "vue-router";
 import { createCatalog, provideCatalog } from "../composables/useCatalog.js";
 import { createSession, provideSession } from "../composables/useSession.js";
 import { createSettings, provideSettings } from "../composables/useSettings.js";
+import { createAppRouter } from "../router.js";
 
 export const SETTINGS = {
   qualities: ["1080p", "4K"],
@@ -44,10 +46,11 @@ export async function settle(rounds = 3) {
 
 /**
  * Mounts `component` with `props` under the same providers App.vue sets up,
- * all talking to the stubbed `fetch`. Returns the root element, the shared
- * state and `unmount()`.
+ * all talking to the stubbed `fetch`, and a router in memory that starts at
+ * `path`. Returns the root element, the shared state, the router and
+ * `unmount()`.
  */
-export async function mountView(component, props = {}) {
+export async function mountView(component, props = {}, path = "/") {
   const root = document.createElement("div");
   document.body.append(root);
   const state = {};
@@ -59,12 +62,15 @@ export async function mountView(component, props = {}) {
       return () => h(component, props);
     },
   });
-  const app = createApp(Host);
+  const router = createAppRouter(createMemoryHistory());
+  await router.push(path);
+  const app = createApp(Host).use(router);
   app.mount(root);
   await settle();
   return {
     root,
     ...state,
+    router,
     unmount() {
       app.unmount();
       root.remove();

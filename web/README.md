@@ -6,18 +6,22 @@ Vue 3 single-page app built with Vite. It talks only to the API in
 
 ## Screens
 
-Routes live in the hash and are listed in `src/routes.js`:
+Routes are real paths handled by [vue-router](https://router.vuejs.org/) in
+history mode and are listed in `src/routes.js`:
 
 | Route | Screen |
 |---|---|
-| `#/` | Grid of posters with search by title (also English or original), TMDB id or IMDb id; the search is kept in `#/?q=...` |
-| `#/movie/:id`, `#/series/:id` | Title page: poster, synopsis and its links. Members add another version, edit, delete or move links and change the poster |
-| `#/login` | Sign-in: opens the bot link in Telegram and waits for the answer |
-| `#/unlock` | The shared write password that turns a signed-in user into a member |
-| `#/add` | Add a link: TMDB search, poster picker for new titles, season, quality, languages, tags and the Telegram link |
-| `#/admin` | Admins only: activity log with undo (`?title=` for one title's history), members and admins |
+| `/` | Grid of posters with search by title (also English or original), TMDB id or IMDb id; the search is kept in `/?q=...` |
+| `/movie/:id`, `/series/:id` | Title page: poster, synopsis and its links. Members add another version, edit, delete or move links and change the poster |
+| `/login` | Sign-in: opens the bot link in Telegram and waits for the answer; `?next=` is where it goes back to |
+| `/unlock` | The shared write password that turns a signed-in user into a member; also takes `?next=` |
+| `/add` | Add a link: TMDB search, poster picker for new titles, season, quality, languages, tags and the Telegram link |
+| `/admin` | Admins only: activity log with undo (`?title=` for one title's history, `?tab=members` for members and admins) |
 
-Any other route shows `NotFoundView`. Every write reloads the catalog.
+Any other route shows `NotFoundView`. Views get the route's captures and its
+query as props (`query` is a `URLSearchParams`), so they can be tested
+without a router; internal links are `RouterLink`s. Every write reloads the
+catalog.
 
 ## Code layout
 
@@ -57,9 +61,13 @@ the browser points the web at another TMDB proxy, for example a local one.
 The build goes to `tools/cositalogo-api/dist/` (gitignored), which the
 `cositalogo` Worker uploads as its
 [static assets](https://developers.cloudflare.com/workers/static-assets/).
-`run_worker_first = ["/api/*"]` in its `wrangler.toml` sends API requests to
-the Worker before looking at files, so a file can never shadow an endpoint;
-other paths are served from the build without running the Worker.
+`run_worker_first = ["/api", "/api/*"]` in its `wrangler.toml` sends API
+requests to the Worker before looking at files, so a file can never shadow
+an endpoint and an unknown API path is a JSON 404, never the app. Other paths
+are served from the build without running the Worker, and
+`not_found_handling = "single-page-application"` answers a navigation to any
+path that is not a file (`/movie/550`, a reload, a shared link) with
+`index.html`, so the router can take over. Vite's dev server does the same.
 
 The web has to share the API's origin to sign in: the session cookie is
 `SameSite=Lax` and the API sends no CORS headers. `public/_headers` adds

@@ -15,21 +15,21 @@ describe("AppHeader", () => {
   it("offers to sign in and come back to the current page", async () => {
     fakeApi({ "GET /api/catalog": [], "GET /api/me": json({ error: "sign in first" }, 401) });
     view = await mountView(AppHeader, { path: "/movie/550" });
-    expect(button(view.root, "Iniciar sesión").getAttribute("href")).toBe("#/login?next=%2Fmovie%2F550");
+    expect(button(view.root, "Iniciar sesión").getAttribute("href")).toBe("/login?next=%2Fmovie%2F550");
   });
 
   it("asks a signed-in user without the password to unlock", async () => {
     signedIn({ id: 1, name: "Ana", member: false, admin: false });
     view = await mountView(AppHeader, { path: "/" });
     expect(view.root.querySelector(".header__user").textContent).toBe("Ana");
-    expect(button(view.root, "Desbloquear").getAttribute("href")).toBe("#/unlock");
+    expect(button(view.root, "Desbloquear").getAttribute("href")).toBe("/unlock");
     expect(button(view.root, "Añadir")).toBeNull();
   });
 
   it("lets a member add and sign out", async () => {
     const api = signedIn({ id: 1, name: "Ana", member: true, admin: false });
     view = await mountView(AppHeader, { path: "/" });
-    expect(button(view.root, "Añadir").getAttribute("href")).toBe("#/add");
+    expect(button(view.root, "Añadir").getAttribute("href")).toBe("/add");
     expect(button(view.root, "Admin")).toBeNull();
     button(view.root, "Salir").click();
     await settle();
@@ -40,6 +40,6 @@ describe("AppHeader", () => {
   it("links admins to the admin page", async () => {
     signedIn({ id: 9, name: "Jefa", member: true, admin: true });
     view = await mountView(AppHeader, { path: "/" });
-    expect(view.root.querySelector("a[href='#/admin']").textContent).toBe("Admin");
+    expect(view.root.querySelector("a[href='/admin']").textContent).toBe("Admin");
   });
 });

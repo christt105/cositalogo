@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from "vue";
+import { RouterLink } from "vue-router";
 import { useSession } from "../composables/useSession.js";
 import { withNext } from "../lib/route.js";
 
@@ -21,16 +22,16 @@ async function signOut() {
 
 <template>
   <header class="header">
-    <a class="header__title" href="#/">Cositálogo</a>
+    <RouterLink class="header__title" to="/">Cositálogo</RouterLink>
     <nav v-if="session.status.value === 'ready'" class="header__session" aria-label="Sesión">
       <template v-if="user">
-        <a v-if="user.member" class="btn btn--primary" href="#/add">Añadir</a>
-        <a v-else class="btn" :href="unlockHref">Desbloquear</a>
-        <a v-if="user.admin" class="btn btn--link" href="#/admin">Admin</a>
+        <RouterLink v-if="user.member" class="btn btn--primary" to="/add">Añadir</RouterLink>
+        <RouterLink v-else class="btn" :to="unlockHref">Desbloquear</RouterLink>
+        <RouterLink v-if="user.admin" class="btn btn--link" to="/admin">Admin</RouterLink>
         <span class="header__user">{{ user.name }}</span>
         <button type="button" class="btn btn--link" @click="signOut">Salir</button>
       </template>
-      <a v-else class="btn" :href="loginHref">Iniciar sesión</a>
+      <RouterLink v-else class="btn" :to="loginHref">Iniciar sesión</RouterLink>
     </nav>
   </header>
 </template>

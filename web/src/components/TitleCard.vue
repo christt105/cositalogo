@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from "vue";
+import { RouterLink } from "vue-router";
 import { TYPE_LABELS, seasonSummary } from "../lib/catalog.js";
 
 const props = defineProps({ item: { type: Object, required: true } });
@@ -8,7 +9,7 @@ const typeLabel = computed(() => [TYPE_LABELS[props.item.type], seasonSummary(pr
 </script>
 
 <template>
-  <a class="card" :href="`#/${item.type}/${item.tmdb}`">
+  <RouterLink class="card" :to="`/${item.type}/${item.tmdb}`">
     <div class="card__poster-wrap">
       <img v-if="item.poster" class="card__poster" :src="item.poster" alt="" loading="lazy">
       <span class="card__type">{{ typeLabel }}</span>
@@ -18,5 +19,5 @@ const typeLabel = computed(() => [TYPE_LABELS[props.item.type], seasonSummary(pr
     </div>
     <h2 class="card__title">{{ item.title }}</h2>
     <div class="card__year">{{ item.year }}</div>
-  </a>
+  </RouterLink>
 </template>

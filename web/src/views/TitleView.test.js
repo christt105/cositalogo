@@ -21,7 +21,6 @@ afterEach(() => {
 });
 
 async function mount(user, routes = {}, props = {}) {
-  history.replaceState(null, "", "/#/series/1399");
   let catalogLoads = 0;
   let current = entry([[1, "1080p", L1], [2, "4K", L2]]);
   const api = fakeApi({
@@ -36,7 +35,7 @@ async function mount(user, routes = {}, props = {}) {
     type, tmdb, title: type === "movie" ? "Matrix" : "Juego de tronos", year: "", poster: null,
     seasons: type === "movie" ? [] : [{ season_number: 1, name: "Temporada 1" }, { season_number: 2, name: "Temporada 2" }],
   }));
-  view = await mountView(TitleView, { type: "series", id: "1399", loadTmdb, ...props });
+  view = await mountView(TitleView, { type: "series", id: "1399", loadTmdb, ...props }, "/series/1399");
   await settle();
   return { api, loadTmdb, setEntry: (next) => (current = next), catalogLoads: () => catalogLoads };
 }
@@ -59,8 +58,8 @@ describe("TitleView", () => {
     expect(button(rows()[1], "Editar")).not.toBeNull();
     expect(button(rows()[0], "Borrar")).not.toBeNull();
     expect(button(rows()[1], "Borrar")).toBeNull();
-    expect(button(view.root, "Añadir otra versión").getAttribute("href")).toBe("#/add?type=series&tmdb=1399");
-    expect(view.root.querySelector("a[href^='#/admin']")).toBeNull();
+    expect(button(view.root, "Añadir otra versión").getAttribute("href")).toBe("/add?type=series&tmdb=1399");
+    expect(view.root.querySelector("a[href^='/admin']")).toBeNull();
   });
 
   it("shows no write buttons to a signed-in user without the password", async () => {
@@ -145,7 +144,7 @@ describe("TitleView", () => {
     }, { loadPosters: async () => POSTERS });
     setEntry({ ...entry([[1, "1080p", L1]]), poster: "https://img.test/w342/es.jpg" });
     view.unmount();
-    view = await mountView(TitleView, { type: "series", id: "1399", loadTmdb: async () => ({ poster: "https://img.test/w342/tmdb.jpg", seasons: [] }), loadPosters: async () => POSTERS });
+    view = await mountView(TitleView, { type: "series", id: "1399", loadTmdb: async () => ({ poster: "https://img.test/w342/tmdb.jpg", seasons: [] }), loadPosters: async () => POSTERS }, "/series/1399");
     await settle();
     button(view.root, "Cambiar portada").click();
     await settle();
@@ -164,7 +163,7 @@ describe("TitleView", () => {
 
   it("links admins to the title's history", async () => {
     await mount({ id: 9, name: "Jefa", member: true, admin: true });
-    expect(view.root.querySelector("a[href='#/admin?title=series:1399']").textContent).toBe("Historial");
+    expect(view.root.querySelector("a[href='/admin?title=series:1399']").textContent).toBe("Historial");
   });
 
   it("offers moving only the links the user may delete", async () => {
@@ -192,8 +191,8 @@ describe("TitleView", () => {
     expect(api.calls.find((c) => c.method === "POST").body).toEqual({ type: "movie", tmdb: 603 });
     expect(catalogLoads()).toBe(2);
     expect(rows()).toHaveLength(1);
-    expect(view.root.querySelector("[role=status] a").getAttribute("href")).toBe("#/movie/603");
-    expect(location.hash).toBe("#/series/1399");
+    expect(view.root.querySelector("[role=status] a").getAttribute("href")).toBe("/movie/603");
+    expect(view.router.currentRoute.value.fullPath).toBe("/series/1399");
   });
 
   it("follows the link when it was the last one of the title", async () => {
@@ -203,11 +202,11 @@ describe("TitleView", () => {
     });
     setEntry(entry([[1, "1080p", L1]]));
     view.unmount();
-    view = await mountView(TitleView, { type: "series", id: "1399", loadTmdb: async (type, tmdb) => ({ type, tmdb, title: "Matrix", year: "", poster: null, seasons: [] }) });
+    view = await mountView(TitleView, { type: "series", id: "1399", loadTmdb: async (type, tmdb) => ({ type, tmdb, title: "Matrix", year: "", poster: null, seasons: [] }) }, "/series/1399");
     await settle();
     setEntry(null);
     await moveFirstTo("https://www.themoviedb.org/movie/603");
-    expect(location.hash).toBe("#/movie/603");
+    expect(view.router.currentRoute.value.fullPath).toBe("/movie/603");
   });
 
   it("says when the title does not exist", async () => {

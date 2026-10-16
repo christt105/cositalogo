@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, shallowRef, watch } from "vue";
+import { RouterLink } from "vue-router";
 import { getAudit, undoAudit } from "../api/admin.js";
 import { useCatalog } from "../composables/useCatalog.js";
 import { useSession } from "../composables/useSession.js";
@@ -61,7 +62,7 @@ async function undo(entry) {
       <p class="audit__line">
         <strong>{{ e.user.name || `#${e.user.id}` }}</strong>
         {{ entryVerb(e) }}
-        <a v-if="entryTitle(e)" :href="`#/${entryTitle(e).type}/${entryTitle(e).tmdb}`">{{ titleName(entryTitle(e)) }}</a>
+        <RouterLink v-if="entryTitle(e)" :to="`/${entryTitle(e).type}/${entryTitle(e).tmdb}`">{{ titleName(entryTitle(e)) }}</RouterLink>
       </p>
       <p class="audit__detail">{{ entryDetail(e, titleName) }}</p>
       <p class="panel__hint">

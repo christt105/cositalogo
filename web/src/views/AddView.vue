@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, shallowRef } from "vue";
+import { RouterLink, useRouter } from "vue-router";
 import { addLink } from "../api/links.js";
 import { getTmdbTitle } from "../api/tmdb.js";
 import LinkForm from "../components/LinkForm.vue";
@@ -19,6 +20,7 @@ const props = defineProps({
 
 const catalog = useCatalog();
 const session = useSession();
+const router = useRouter();
 const selected = shallowRef(null);
 const state = ref("idle");
 const busy = ref(false);
@@ -51,7 +53,7 @@ async function submit(body) {
   try {
     await addLink({ type, tmdb, ...body, ...(poster.value && !existing.value ? { poster: poster.value } : {}) });
     await catalog.reload();
-    location.hash = `#/${type}/${tmdb}`;
+    router.push(`/${type}/${tmdb}`);
   } catch (err) {
     if (err.status === 401) session.setUser(null);
     error.value = errorMessage(err);
@@ -75,7 +77,7 @@ async function submit(body) {
             <h2 class="selected__title">{{ selected.title }}</h2>
             <p class="panel__hint">{{ TYPE_LABELS[selected.type] }} {{ selected.year }}</p>
             <div v-if="existing" class="existing">
-              <p>Ya está en el Cositálogo (<a :href="`#/${existing.type}/${existing.tmdb}`">ver página</a>). Versiones que ya tiene, para no repetir:</p>
+              <p>Ya está en el Cositálogo (<RouterLink :to="`/${existing.type}/${existing.tmdb}`">ver página</RouterLink>). Versiones que ya tiene, para no repetir:</p>
               <ul>
                 <li v-for="(l, i) in existing.links" :key="i">
                   <strong v-if="l.seasonName">{{ l.seasonName }}</strong>

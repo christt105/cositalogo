@@ -11,9 +11,8 @@ afterEach(() => {
 });
 
 async function mount(routes, query = "next=/movie/550") {
-  history.replaceState(null, "", "/#/unlock");
   const api = fakeApi({ "GET /api/catalog": [], "GET /api/me": USER, ...routes });
-  view = await mountView(UnlockView, { query: new URLSearchParams(query) });
+  view = await mountView(UnlockView, { query: new URLSearchParams(query) }, `/unlock?${query}`);
   return api;
 }
 
@@ -31,7 +30,7 @@ describe("UnlockView", () => {
     expect(api.calls.at(-1)).toMatchObject({ method: "POST", path: "/api/unlock", body: { password: "cosita" } });
     expect(api.calls.at(-1).init.headers).toEqual({ "content-type": "application/json" });
     expect(view.session.canWrite.value).toBe(true);
-    expect(location.hash).toBe("#/movie/550");
+    expect(view.router.currentRoute.value.fullPath).toBe("/movie/550");
   });
 
   it("explains a wrong password and too many tries", async () => {
@@ -47,7 +46,7 @@ describe("UnlockView", () => {
   it("asks to sign in first and to come back here", async () => {
     await mount({ "GET /api/me": json({}, 401) });
     expect(view.root.querySelector("form")).toBeNull();
-    expect(button(view.root, "Iniciar sesión").getAttribute("href")).toBe("#/login?next=%2Funlock%3Fnext%3D%252Fmovie%252F550");
+    expect(button(view.root, "Iniciar sesión").getAttribute("href")).toBe("/login?next=%2Funlock%3Fnext%3D%252Fmovie%252F550");
   });
 
   it("says a member has nothing to unlock", async () => {

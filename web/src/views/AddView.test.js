@@ -16,7 +16,6 @@ afterEach(() => {
 });
 
 async function mount(routes, query = "type=series&tmdb=1399") {
-  history.replaceState(null, "", `/#/add?${query}`);
   let catalogLoads = 0;
   const api = fakeApi({
     "GET /api/catalog": () => (++catalogLoads, [EXISTING]),
@@ -26,7 +25,7 @@ async function mount(routes, query = "type=series&tmdb=1399") {
   });
   const loadTitle = vi.fn(async () => GOT);
   const loadPosters = vi.fn(async () => [{ key: "es", label: "Castellano", posters: [{ value: POSTER, thumb: POSTER }] }]);
-  view = await mountView(AddView, { query: new URLSearchParams(query), loadTitle, loadPosters });
+  view = await mountView(AddView, { query: new URLSearchParams(query), loadTitle, loadPosters }, `/add?${query}`);
   await settle();
   return { api, loadTitle, catalogLoads: () => catalogLoads };
 }
@@ -42,7 +41,7 @@ describe("AddView", () => {
   it("is behind the write gate", async () => {
     await mount({ "GET /api/me": json({}, 401) });
     expect(view.root.querySelector("#tmdb-search")).toBeNull();
-    expect(button(view.root, "Iniciar sesión").getAttribute("href")).toBe("#/login?next=%2Fadd");
+    expect(button(view.root, "Iniciar sesión").getAttribute("href")).toBe("/login?next=%2Fadd");
   });
 
   it("shows the versions the title already has", async () => {
@@ -50,7 +49,7 @@ describe("AddView", () => {
     expect(loadTitle).toHaveBeenCalledWith("series", 1399);
     expect(view.root.querySelector(".selected__title").textContent).toBe("Juego de tronos");
     expect(view.root.querySelector(".existing").textContent).toContain("Temporada 1");
-    expect(view.root.querySelector('.existing a').getAttribute("href")).toBe("#/series/1399");
+    expect(view.root.querySelector('.existing a').getAttribute("href")).toBe("/series/1399");
   });
 
   it("adds the link, reloads the catalog and opens the title page", async () => {
@@ -60,7 +59,7 @@ describe("AddView", () => {
     expect(post).toMatchObject({ path: "/api/links", body: { type: "series", tmdb: 1399, season: 1, quality: "1080p", audio: [], subs: [], tags: [], link: LINK } });
     expect(post.init.headers).toEqual({ "content-type": "application/json" });
     expect(catalogLoads()).toBe(2);
-    expect(location.hash).toBe("#/series/1399");
+    expect(view.router.currentRoute.value.fullPath).toBe("/series/1399");
   });
 
   it("offers no poster picker for a title already in the catalog", async () => {
@@ -87,7 +86,7 @@ describe("AddView", () => {
     await mount({ "POST /api/links": json({ error: "that Telegram message is already link 3 of movie:550" }, 409) });
     await fillAndSend();
     expect(view.root.querySelector("[role=alert]").textContent).toContain("already link 3");
-    expect(location.hash).toBe("#/add?type=series&tmdb=1399");
+    expect(view.router.currentRoute.value.fullPath).toBe("/add?type=series&tmdb=1399");
   });
 
   it("drops the session when the API says it is gone", async () => {
@@ -97,7 +96,7 @@ describe("AddView", () => {
     expect(button(view.root, "Iniciar sesión")).not.toBeNull();
   });
 
-  it("starts empty without a title in the hash", async () => {
+  it("starts empty without a title in the query", async () => {
     const { loadTitle } = await mount({}, "");
     expect(loadTitle).not.toHaveBeenCalled();
     expect(view.root.querySelector("#tmdb-search")).not.toBeNull();

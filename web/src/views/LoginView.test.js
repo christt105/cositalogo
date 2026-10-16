@@ -9,7 +9,6 @@ let view;
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["setTimeout", "setInterval", "clearTimeout", "clearInterval", "Date"] });
   vi.setSystemTime(Date.UTC(2026, 9, 14, 12, 0));
-  history.replaceState(null, "", "/#/login?next=%2Fadd");
 });
 afterEach(() => {
   view?.unmount();
@@ -25,7 +24,7 @@ async function flush() {
 
 async function mount(routes) {
   const api = fakeApi({ "GET /api/catalog": [], "GET /api/me": json({}, 401), "POST /api/login": json(START, 201), ...routes });
-  const mounting = mountView(LoginView, { query: new URLSearchParams("next=/add") });
+  const mounting = mountView(LoginView, { query: new URLSearchParams("next=/add") }, "/login?next=%2Fadd");
   await flush();
   view = await mounting;
   return api;
@@ -46,7 +45,7 @@ describe("LoginView", () => {
     await settle(1);
     expect(polls).toBe(3);
     expect(view.session.user.value).toEqual(USER);
-    expect(location.hash).toBe("#/add");
+    expect(view.router.currentRoute.value.fullPath).toBe("/add");
     await vi.advanceTimersByTimeAsync(10000);
     expect(api.calls.filter((c) => c.path === "/api/login/poll")).toHaveLength(3);
   });
