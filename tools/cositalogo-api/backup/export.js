@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { isEntrypoint } from "../../../scripts/lib.js";
+import { isEntrypoint } from "./entrypoint.js";
 import {
   AUDIT_JSON,
   DIRECTORIES,
