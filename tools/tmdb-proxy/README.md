@@ -1,8 +1,7 @@
 # TMDB proxy
 
-Cloudflare Worker (`cositeca-tmdb-proxy`, deployed at
-https://cositeca-tmdb-proxy.christt105.workers.dev) that lets the web search
-TMDB and pick posters without holding a TMDB key. `worker.js` has no
+Cloudflare Worker (`cositeca-tmdb-proxy`) that lets the web search TMDB and
+pick posters without holding a TMDB key. `worker.js` has no
 dependencies. It exposes only a few read-only routes, always with
 `language=es-ES`, and answers anything else with 404:
 
