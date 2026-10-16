@@ -117,7 +117,7 @@ the web app has been built at least once; the `d1` commands do not need it.
 A session cookie for local testing can be signed with `signSession` from
 `src/session.js`, or a sign-in can be completed by posting a fake update to
 `/api/telegram` with the `x-telegram-bot-api-secret-token` header. The tests
-(`test/cositalogo-api.test.js`, `test/cositalogo-auth.test.js`) run the Worker
+(`test/api.test.js`, `test/auth.test.js`) run the Worker
 against an in-memory SQLite with the real migrations (`test/d1-shim.js`), so
 they need Node 22 or later for `node:sqlite`.
 
@@ -129,8 +129,7 @@ same path on the new origin and any other address a page that moves the
 browser to the same address there. It has no workflow; deploy it by hand
 from that folder with `wrangler deploy` if it ever changes.
 
-`.github/workflows/deploy-cositalogo-api.yml` runs the tests (`npm test` and
-`npm run test:web`), builds the web app, applies pending D1 migrations,
+`.github/workflows/deploy-cositalogo-api.yml` runs the tests (`npm test`), builds the web app, applies pending D1 migrations,
 deploys the Worker with the web as its assets and then checks that
 `/api/catalog`, a missing title and the web page answer as expected. It runs
 on every push to `main` that touches the Worker's code, migrations,
