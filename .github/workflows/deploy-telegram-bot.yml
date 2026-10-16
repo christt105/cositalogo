@@ -5,8 +5,11 @@ on:
     branches: [main]
     paths:
       - "tools/telegram-bot/**"
-      - "site/rules.js"
+      - ".github/workflows/deploy-telegram-bot.yml"
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   deploy:
@@ -25,7 +28,3 @@ jobs:
           workingDirectory: tools/telegram-bot
           command: deploy
           wranglerVersion: "4.134.0"
-          secrets: |
-            INTERNAL_TOKEN
-        env:
-          INTERNAL_TOKEN: ${{ secrets.INTERNAL_TOKEN }}
