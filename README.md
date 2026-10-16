@@ -15,7 +15,6 @@ to use it, in Spanish: [`GUIA.md`](GUIA.md).
 | `tools/cositalogo-api/` | Cloudflare Worker `cositalogo`: the JSON API over a D1 database, serving the built web as static assets; also the D1 migrations, the nightly backup export/restore and the Worker that keeps the old `cositalogo-api` name redirecting. See its [README](tools/cositalogo-api/README.md) |
 | `shared/rules.js` | Telegram link and search rules used by both the API and the web |
 | `tools/tmdb-proxy/` | Cloudflare Worker `cositeca-tmdb-proxy`: read-only TMDB proxy for the web's searches and poster picker. See its [README](tools/tmdb-proxy/README.md) |
-| `tools/telegram-bot/` | Cloudflare Worker `cositeca-telegram-bot`: the retired bot, which only answers with the link to the web |
 | `test/` | Node tests for the Workers, the backup and the shared rules |
 
 D1 is the only source of truth for the catalog. Every write goes through the
@@ -49,8 +48,8 @@ the network.
   migrations, `web/`, `vite.config.js` or `shared/`; tests, builds the web,
   applies pending D1 migrations, deploys the `cositalogo` Worker and smoke
   tests it.
-- `deploy-tmdb-proxy.yml` and `deploy-telegram-bot.yml`: deploy their Worker
-  when its folder changes.
+- `deploy-tmdb-proxy.yml`: deploys the TMDB proxy Worker when its folder
+  changes.
 
 The deploys use the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`
 repository secrets; each Worker's own secrets are set in Cloudflare with
