@@ -1,34 +1,6 @@
-import {
-  TELEGRAM_LINK_RE,
-  TMDB_URL_RE,
-  TMDB_ID_RE,
-  IMDB_ID_RE,
-  cleanNewLanguage,
-  newLanguageError,
-  normalizeText,
-  linkKey,
-} from "../site/rules.js";
-
-export { TELEGRAM_LINK_RE, TMDB_URL_RE, TMDB_ID_RE, IMDB_ID_RE };
-export const FILENAME_RE = /^\d+\.yaml$/;
+import { TELEGRAM_LINK_RE, normalizeText } from "../site/rules.js";
 
 export class ValidationError extends Error {}
-
-/**
- * Registry of links by linkKey. `add(link, path)` returns the path that
- * already holds the same link, or undefined after registering it.
- */
-export function createLinkIndex() {
-  const seen = new Map();
-  return {
-    add(link, path) {
-      const key = linkKey(link);
-      if (seen.has(key)) return seen.get(key);
-      seen.set(key, path);
-      return undefined;
-    },
-  };
-}
 
 export function parseTelegramLink(link) {
   if (typeof link !== "string") {
@@ -51,35 +23,6 @@ export function parseTelegramLink(link) {
     topicId: topicId ?? null,
     messageId,
   };
-}
-
-export function parseTmdbInput(input, { hasSeason } = {}) {
-  if (typeof input !== "string" || input.trim() === "") {
-    throw new ValidationError("tmdb input is required");
-  }
-  const value = input.trim();
-
-  const urlMatch = TMDB_URL_RE.exec(value);
-  if (urlMatch) {
-    return { source: "url", type: urlMatch[1], id: Number(urlMatch[2]) };
-  }
-
-  const idMatch = TMDB_ID_RE.exec(value);
-  if (idMatch) {
-    return {
-      source: "tmdbId",
-      type: hasSeason ? "tv" : "movie",
-      id: Number(idMatch[1]),
-    };
-  }
-
-  if (IMDB_ID_RE.test(value)) {
-    return { source: "imdb", imdbId: value };
-  }
-
-  throw new ValidationError(
-    `tmdb input must be a themoviedb.org URL, tmdb:<id> or an IMDB id: ${value}`
-  );
 }
 
 export function validateQuality(quality, qualities) {
@@ -131,17 +74,6 @@ export function validateLanguages(values, field, allowed) {
   }
 }
 
-export function sanitizeNewLanguage(raw, existing) {
-  if (raw === undefined || raw === null) return undefined;
-  const value = cleanNewLanguage(raw);
-  if (value === "") return undefined;
-  const error = newLanguageError(value);
-  if (error) throw new ValidationError(`${error} Recibido: ${value}`);
-  const key = normalizeText(value);
-  const existingMatch = existing.find((v) => normalizeText(v) === key);
-  return existingMatch ?? value;
-}
-
 const HTTPS_URL_RE = /^https:\/\/[^\s/?#@]+(?:[/?#]\S*)?$/;
 
 export function validatePoster(poster) {
@@ -151,29 +83,6 @@ export function validatePoster(poster) {
   }
   if (!HTTPS_URL_RE.test(poster)) {
     throw new ValidationError(`poster must be an https:// URL, got ${poster}`);
-  }
-}
-
-export function validateSeasonPosters(seasonPosters, type) {
-  if (seasonPosters === undefined) return;
-  if (type !== "series") {
-    throw new ValidationError("seasonPosters is not allowed for movie entries");
-  }
-  if (typeof seasonPosters !== "object" || seasonPosters === null || Array.isArray(seasonPosters)) {
-    throw new ValidationError("seasonPosters must be a mapping of season to poster URL");
-  }
-  for (const [season, poster] of Object.entries(seasonPosters)) {
-    if (season !== "all" && !/^\d+$/.test(season)) {
-      throw new ValidationError(
-        `seasonPosters key must be "all" or an integer >= 0, got ${JSON.stringify(season)}`
-      );
-    }
-    if (typeof poster !== "string" || poster.trim() === "") {
-      throw new ValidationError(`seasonPosters["${season}"] must be a non-empty string`);
-    }
-    if (!HTTPS_URL_RE.test(poster)) {
-      throw new ValidationError(`seasonPosters["${season}"] must be an https:// URL, got ${poster}`);
-    }
   }
 }
 
@@ -195,31 +104,10 @@ export function validateLinkEntry(entry, { type, qualities, groups, languages })
   }
 }
 
-export function validateTitleFile(type, filename, data, { qualities, groups, languages }) {
-  if (!FILENAME_RE.test(filename)) {
-    throw new ValidationError(`invalid filename: ${filename}`);
-  }
-  if (type !== "movies" && type !== "series") {
-    throw new ValidationError(`invalid type: ${type}`);
-  }
-  if (typeof data !== "object" || data === null) {
-    throw new ValidationError("file content must be a YAML mapping");
-  }
-  if (!Array.isArray(data.links) || data.links.length === 0) {
-    throw new ValidationError("links must be a non-empty array");
-  }
-  validatePoster(data.poster);
-  const entryType = type === "movies" ? "movie" : "series";
-  validateSeasonPosters(data.seasonPosters, entryType);
-  for (const entry of data.links) {
-    validateLinkEntry(entry, { type: entryType, qualities, groups, languages });
-  }
-}
-
 /**
  * A TMDB movie or tv response with `translations` (from
  * `append_to_response=translations`) reduced to the English ones, the only
- * ones the build reads, so the cache does not store every language.
+ * ones the catalog reads.
  */
 export function keepEnglishTranslations(data) {
   const all = data.translations?.translations ?? [];
@@ -227,10 +115,6 @@ export function keepEnglishTranslations(data) {
     ...data,
     translations: { translations: all.filter((t) => t.iso_639_1 === "en") },
   };
-}
-
-export function hasTranslations(value) {
-  return Array.isArray(value?.translations?.translations);
 }
 
 /**

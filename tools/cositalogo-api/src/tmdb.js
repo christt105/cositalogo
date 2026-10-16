@@ -21,9 +21,8 @@ async function request(env, path, params = {}) {
 }
 
 /**
- * Column values for a `titles` row, built from TMDB the same way
- * scripts/build.js builds a catalog entry and its detail. A 422 when TMDB
- * does not know the id.
+ * Column values for a `titles` row, with the catalog entry and detail
+ * fields, built from TMDB. A 422 when TMDB does not know the id.
  */
 export async function fetchTitle(env, type, tmdbId) {
   const isMovie = type === "movie";

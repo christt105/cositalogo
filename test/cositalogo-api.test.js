@@ -134,7 +134,7 @@ describe("GET /api/catalog", () => {
 });
 
 describe("POST /api/links", () => {
-  test("creates the title from TMDB with the same shape scripts/build.js writes", async () => {
+  test("creates the title from TMDB with every catalog field", async () => {
     const res = await call("POST", "/api/links", { uid: 7, body: movieLink() });
     assert.equal(res.status, 201);
     const link = await res.json();

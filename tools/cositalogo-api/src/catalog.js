@@ -14,9 +14,8 @@ function groupName(url, groups) {
 }
 
 /**
- * The catalog entry of a title, with the same shape and field order as the
- * one scripts/build.js writes to catalog.json, from its `titles` row and
- * its `links` rows in insertion order.
+ * The catalog entry of a title, as `/api/catalog` serves it, from its
+ * `titles` row and its `links` rows in insertion order.
  */
 export function titleEntry(title, links, { qualities, groups }) {
   const isSeries = title.type === "series";

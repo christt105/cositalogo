@@ -1,13 +1,14 @@
-import { test, describe, before, after, beforeEach } from "node:test";
+import { test, describe, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { buildImport } from "../tools/cositalogo-api/import/import.js";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { linkKey } from "../site/rules.js";
+import { isEntrypoint } from "../tools/cositalogo-api/backup/entrypoint.js";
 import { exportBackup, writeBackup } from "../tools/cositalogo-api/backup/export.js";
 import { readBackup, restoreSql } from "../tools/cositalogo-api/backup/restore.js";
-import { catalogTmdb, config, link, yaml } from "./fixtures.js";
+import { config, link } from "./fixtures.js";
 import { createD1 } from "./d1-shim.js";
 
 const MIGRATIONS = fileURLToPath(new URL("../tools/cositalogo-api/migrations", import.meta.url));
@@ -23,42 +24,45 @@ const TABLES = {
   audit: "id",
 };
 
+const title = (type, tmdbId, name, extra = {}) => ({
+  type, tmdb_id: tmdbId, imdb: null, title: name, original_title: name, english_title: null, year: "2000",
+  tmdb_poster: `https://image.tmdb.org/t/p/w342/${tmdbId}.jpg`, poster: null, genres: ["Drama"], seasons: {},
+  season_posters: {}, detail: {}, created_at: NOW, updated_at: NOW, ...extra,
+});
+let nextLinkId = 1;
+const row = (url, fields) => ({
+  id: nextLinkId++, season: null, quality: "1080p", audio: [], subs: [], tags: [], url, link_key: linkKey(url),
+  added_by: null, created_at: NOW, updated_at: NOW, ...fields,
+});
+
+/** A backup with two movies and a series, as `exportBackup` writes it. */
+function fixtureBackup() {
+  nextLinkId = 1;
+  const entry = (t, links) => [`titles/${t.type}/${t.tmdb_id}.json`, JSON.stringify({ title: t, links })];
+  return new Map([
+    ["settings.json", JSON.stringify(config())],
+    ["admins.json", "[]"],
+    ["members.json", "[]"],
+    entry(title("movie", 550, "El club de la lucha"), [row(link(1), { audio: ["Castellano"] }), row(link(2), { quality: "4K" })]),
+    entry(title("movie", 680, "Pulp Fiction", { poster: "https://example.com/pf.jpg" }), [row(link(3))]),
+    entry(title("series", 1396, "Breaking Bad", { season_posters: { 2: "https://example.com/s2.jpg" } }), [
+      row(link(10), { season: "1", subs: ["Forzados"] }),
+      row(link(11), { season: "2" }),
+      row(link(13), { season: "all", quality: "4K" }),
+    ]),
+  ]);
+}
+
 describe("Cositálogo backup", () => {
-  let root;
-  let cwd;
   let db;
 
   const queryOf = (target) => async (sql, params = []) => target.sqlite.prepare(sql).all(...params).map((r) => ({ ...r }));
   const rows = (target, table) => target.sqlite.prepare(`SELECT * FROM ${table} ORDER BY ${TABLES[table]}`).all().map((r) => ({ ...r }));
   const snapshot = (target) => ({ ...target.sqlite.prepare("SELECT version, body FROM snapshot").get() });
 
-  before(() => {
-    root = mkdtempSync(join(tmpdir(), "cositalogo-backup-"));
-    cwd = process.cwd();
-    process.chdir(root);
-    mkdirSync(join(root, "movies"));
-    mkdirSync(join(root, "series"));
-    writeFileSync(join(root, "movies", "550.yaml"), yaml({ links: [{ quality: "1080p", audio: ["Castellano"], link: link(1) }, { quality: "4K", link: link(2) }] }));
-    writeFileSync(join(root, "movies", "680.yaml"), yaml({ poster: "https://example.com/pf.jpg", links: [{ quality: "1080p", link: link(3) }] }));
-    writeFileSync(join(root, "series", "1396.yaml"), yaml({
-      seasonPosters: { 2: "https://example.com/s2.jpg" },
-      links: [
-        { season: 1, quality: "1080p", subs: ["Forzados"], link: link(10) },
-        { season: 2, quality: "1080p", link: link(11) },
-        { season: "all", quality: "4K", link: link(13) },
-      ],
-    }));
-  });
-
-  after(() => {
-    process.chdir(cwd);
-    rmSync(root, { recursive: true, force: true });
-  });
-
-  beforeEach(async () => {
+  beforeEach(() => {
     db = createD1(MIGRATIONS);
-    const { sql } = await buildImport({ tmdb: catalogTmdb(), config: config(), addedTimestamps: new Map(), now: NOW });
-    db.sqlite.exec(sql);
+    db.sqlite.exec(restoreSql(fixtureBackup(), NOW));
     db.sqlite.exec(`
       INSERT INTO admins (user_id, name, added_by, created_at) VALUES (852128924, 'Christian', NULL, ${SEPTEMBER});
       INSERT INTO members (user_id, name, created_at) VALUES (852128924, 'Christian', ${SEPTEMBER}), (7, 'Ana', ${OCTOBER});
@@ -122,5 +126,24 @@ describe("Cositálogo backup", () => {
     assert.equal(snapshot(db).version, before + 1);
     assert.equal(JSON.parse(snapshot(db).body).length, 2);
     assert.equal(db.sqlite.prepare("SELECT count(*) AS n FROM login_requests").get().n, 1);
+  });
+});
+
+describe("isEntrypoint", () => {
+  test("matches the started script through a symlink and rejects other modules", () => {
+    const dir = mkdtempSync(join(tmpdir(), "entry-"));
+    try {
+      const real = join(dir, "script.js");
+      const alias = join(dir, "alias.js");
+      writeFileSync(real, "");
+      symlinkSync(real, alias);
+      const url = pathToFileURL(real).href;
+      assert.equal(isEntrypoint(url, real), true);
+      assert.equal(isEntrypoint(url, alias), true);
+      assert.equal(isEntrypoint(url, join(dir, "other.js")), false);
+      assert.equal(isEntrypoint(url, undefined), false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

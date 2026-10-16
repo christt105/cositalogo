@@ -1,8 +1,7 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { isEntrypoint } from "../../../scripts/lib.js";
-import { literal } from "../import/import.js";
 import { snapshotSql, titleEntry } from "../src/catalog.js";
+import { isEntrypoint } from "./entrypoint.js";
 import { AUDIT_JSON, DIRECTORIES, LINK_JSON, SINGLE_FILES, TITLE_JSON, stringifyColumns } from "./format.js";
 
 /** The backup files under `dir`, as `exportBackup` returns them. */
@@ -18,6 +17,16 @@ export function readBackup(dir) {
   for (const name of DIRECTORIES) if (existsSync(join(dir, name))) walk(name);
   for (const name of SINGLE_FILES) files.set(name, readFileSync(join(dir, name), "utf8"));
   return files;
+}
+
+/** An SQL literal for a string, number or null. */
+export function literal(value) {
+  if (value === null || value === undefined) return "NULL";
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) throw new Error(`cannot write ${value} as SQL`);
+    return String(value);
+  }
+  return `'${String(value).replaceAll("'", "''")}'`;
 }
 
 const insert = (table, row) =>
