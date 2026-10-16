@@ -2,8 +2,10 @@
 
 An index of links to messages in private Telegram groups, enriched with
 [TMDB](https://www.themoviedb.org/) metadata (titles, posters, synopses).
-Live at https://cositalogo.christt105.workers.dev/. How to use it, in
-Spanish: [`GUIA.md`](GUIA.md).
+Live at https://cositalogo.christt105.workers.dev/; the old address,
+christt105.github.io/cositeca, redirects there from the
+[christt105/cositeca](https://github.com/christt105/cositeca) repository. How
+to use it, in Spanish: [`GUIA.md`](GUIA.md).
 
 ## Layout
 
@@ -14,7 +16,6 @@ Spanish: [`GUIA.md`](GUIA.md).
 | `shared/rules.js` | Telegram link and search rules used by both the API and the web |
 | `tools/tmdb-proxy/` | Cloudflare Worker `cositeca-tmdb-proxy`: read-only TMDB proxy for the web's searches and poster picker. See its [README](tools/tmdb-proxy/README.md) |
 | `tools/telegram-bot/` | Cloudflare Worker `cositeca-telegram-bot`: the retired bot, which only answers with the link to the web |
-| `site/` | The old GitHub Pages address (christt105.github.io/cositeca), now only a redirect to the web that keeps the `#/...` route |
 | `test/` | Node tests for the Workers, the backup and the shared rules |
 
 D1 is the only source of truth for the catalog. Every write goes through the
@@ -42,7 +43,7 @@ the network.
 
 ## CI and deploys
 
-- `validate.yml`: `npm test`, `npm run test:web` and `npm run build:web` on
+- `ci.yml`: `npm test`, `npm run test:web` and `npm run build:web` on
   every pull request and push to `main`.
 - `deploy-cositalogo-api.yml`: on pushes to `main` that touch the API, its
   migrations, `web/`, `vite.config.js` or `shared/`; tests, builds the web,
@@ -50,8 +51,6 @@ the network.
   tests it.
 - `deploy-tmdb-proxy.yml` and `deploy-telegram-bot.yml`: deploy their Worker
   when its folder changes.
-- `deploy.yml`: publishes `site/` (the redirect) to GitHub Pages when it
-  changes.
 
 The deploys use the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`
 repository secrets; each Worker's own secrets are set in Cloudflare with

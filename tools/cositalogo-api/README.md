@@ -2,8 +2,10 @@
 
 Cloudflare Worker with a D1 database that holds the catalog, the only source
 of truth. The web app in `web/` reads and writes through this API and is
-served by this same Worker (see [Web app](#web-app)); the old GitHub Pages
-site only redirects here (`site/redirect.js`).
+served by this same Worker (see [Web app](#web-app)). The old GitHub Pages
+address, christt105.github.io/cositeca, is now the separate
+[christt105/cositeca](https://github.com/christt105/cositeca) repository and
+only redirects here.
 
 ## Endpoints
 
