@@ -1,7 +1,7 @@
 import { test, describe, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import worker from "../tools/tmdb-proxy/worker.js";
-import { IMDB_ID_RE } from "../site/rules.js";
+import { IMDB_ID_RE } from "../shared/rules.js";
 
 const WEB = "https://cositalogo.christt105.workers.dev";
 const BASE = "https://proxy.test";

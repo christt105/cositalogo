@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
-import { seasonOptions, validateLink } from "../../../site/forms.js";
+import { seasonOptions, validateLink } from "../lib/forms.js";
 import { useSettings } from "../composables/useSettings.js";
 import { linkBody } from "../lib/links.js";
 

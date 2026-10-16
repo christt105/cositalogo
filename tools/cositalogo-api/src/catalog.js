@@ -1,4 +1,4 @@
-import { TELEGRAM_LINK_RE } from "../../../site/rules.js";
+import { TELEGRAM_LINK_RE } from "../../../shared/rules.js";
 import { json } from "./http.js";
 
 const ALL_SEASONS_NAME = "Serie completa";

@@ -1,4 +1,4 @@
-import { TELEGRAM_LINK_RE, normalizeText } from "../site/rules.js";
+import { TELEGRAM_LINK_RE, normalizeText } from "../../../shared/rules.js";
 
 export class ValidationError extends Error {}
 

@@ -11,7 +11,7 @@ import {
   validateLinkEntry,
   englishTitle,
   keepEnglishTranslations,
-} from "../scripts/validation.js";
+} from "../tools/cositalogo-api/src/validation.js";
 import { config, GROUP_ID, link } from "./fixtures.js";
 
 describe("parseTelegramLink", () => {
