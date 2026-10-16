@@ -132,9 +132,11 @@ function remove(link) {
             {{ TYPE_LABELS[entry.type] }} {{ entry.year }}
             <template v-if="entry.originalTitle && entry.originalTitle !== entry.title"> · {{ entry.originalTitle }}</template>
           </p>
-          <a v-if="session.canWrite.value" class="btn btn--primary" :href="`#/add?type=${entry.type}&tmdb=${entry.tmdb}`">Añadir otra versión</a>
-          <button v-if="session.canWrite.value && !editingPoster" type="button" class="btn" @click="editingPoster = true">Cambiar portada</button>
-          <a v-if="session.user.value?.admin" class="btn btn--link" :href="`#/admin?title=${entry.type}:${entry.tmdb}`">Historial</a>
+          <div class="selected__actions">
+            <a v-if="session.canWrite.value" class="btn btn--primary" :href="`#/add?type=${entry.type}&tmdb=${entry.tmdb}`">Añadir otra versión</a>
+            <button v-if="session.canWrite.value && !editingPoster" type="button" class="btn" @click="editingPoster = true">Cambiar portada</button>
+            <a v-if="session.user.value?.admin" class="btn btn--link" :href="`#/admin?title=${entry.type}:${entry.tmdb}`">Historial</a>
+          </div>
         </div>
       </div>
       <PosterForm
