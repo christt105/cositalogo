@@ -491,3 +491,32 @@ body {
 .move .selected__poster {
   width: 72px;
 }
+
+.audit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0;
+  list-style: none;
+}
+
+.audit__entry {
+  padding: 0.75rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.audit__entry.is-undone {
+  opacity: 0.6;
+}
+
+.audit__line,
+.audit__detail {
+  margin: 0 0 0.25rem;
+  overflow-wrap: anywhere;
+}
+
+a.poster-tab {
+  text-decoration: none;
+}
