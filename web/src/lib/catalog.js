@@ -13,6 +13,36 @@ export function searchCatalog(catalog, query) {
   return q ? catalog.filter((item) => matchesSearch(item, q)) : catalog;
 }
 
+export const FILTER_KEYS = ["type", "quality", "audio", "subs", "genre"];
+
+const sortedUnique = (values) => [...new Set(values)].sort((a, b) => a.localeCompare(b, "es"));
+
+/** The values each filter can take in a catalog, as `{ quality: [...], audio: [...], subs: [...], genre: [...] }`. */
+export function filterOptions(catalog) {
+  const links = catalog.flatMap((item) => item.links);
+  return {
+    quality: sortedUnique(links.map((l) => l.quality)),
+    audio: sortedUnique(links.flatMap((l) => l.audio)),
+    subs: sortedUnique(links.flatMap((l) => l.subs)),
+    genre: sortedUnique(catalog.flatMap((item) => item.genres ?? [])),
+  };
+}
+
+/**
+ * The titles that satisfy every filter in `filters` (`type`, `quality`,
+ * `audio`, `subs`, `genre`; blank ones are ignored). Quality, audio and subs
+ * must all hold on the same link, so "4K" plus "Latino" finds titles with a
+ * 4K Latino release, not a 4K one and a different Latino one.
+ */
+export function filterCatalog(catalog, filters) {
+  const { type, quality, audio, subs, genre } = filters;
+  if (!type && !quality && !audio && !subs && !genre) return catalog;
+  const linkMatches = (l) => (!quality || l.quality === quality) && (!audio || l.audio.includes(audio)) && (!subs || l.subs.includes(subs));
+  return catalog.filter(
+    (item) => (!type || item.type === type) && (!genre || item.genres?.includes(genre)) && item.links.some(linkMatches)
+  );
+}
+
 /** The seasons a series has links for, as `T1`, `T1-3` or `T1,3`; empty for movies or when any link covers the whole series. */
 export function seasonSummary(item) {
   if (item.type !== "series") return "";

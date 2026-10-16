@@ -63,6 +63,44 @@ body {
   font-size: 1rem;
 }
 
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem 0;
+}
+
+.filters__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.filters__label {
+  color: var(--text-dim);
+  font-size: 0.75rem;
+}
+
+.filters__select {
+  padding: 0.4rem 0.5rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.filters__clear {
+  padding: 0.4rem 0.75rem;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
