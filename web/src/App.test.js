@@ -5,8 +5,8 @@ import App from "./App.vue";
 import { createAppRouter } from "./router.js";
 
 const CATALOG = [
-  { type: "movie", tmdb: 550, imdb: "tt0137523", title: "El club de la lucha", originalTitle: "Fight Club", year: "1999", poster: "https://image.tmdb.org/p.jpg", qualities: ["1080p"], links: [] },
-  { type: "series", tmdb: 1399, imdb: null, title: "Juego de tronos", originalTitle: "Game of Thrones", year: "2011", poster: null, qualities: ["4K", "1080p"], links: [{ season: 1 }, { season: 2 }] },
+  { type: "movie", tmdb: 550, imdb: "tt0137523", title: "El club de la lucha", originalTitle: "Fight Club", year: "1999", poster: "https://image.tmdb.org/p.jpg", qualities: ["1080p"], genres: ["Drama"], links: [{ quality: "1080p", audio: ["Español"], subs: [] }] },
+  { type: "series", tmdb: 1399, imdb: null, title: "Juego de tronos", originalTitle: "Game of Thrones", year: "2011", poster: null, qualities: ["4K", "1080p"], genres: ["Acción"], links: [{ season: 1, quality: "4K", audio: ["Inglés"], subs: ["Español"] }, { season: 2, quality: "1080p", audio: ["Español"], subs: [] }] },
 ];
 
 const settle = () => new Promise((resolve) => setTimeout(resolve));
@@ -56,6 +56,30 @@ describe("App", () => {
     await mount("/?q=thrones");
     expect(root.querySelector(".search").value).toBe("thrones");
     expect(titles()).toEqual(["Juego de tronos"]);
+  });
+
+  it("starts from the filters in the query and shows the matching titles", async () => {
+    await mount("/?type=series&quality=4K");
+    expect(root.querySelector('[data-filter="type"]').value).toBe("series");
+    expect(titles()).toEqual(["Juego de tronos"]);
+    await router.push("/?audio=Espa%C3%B1ol&subs=Espa%C3%B1ol");
+    await settle();
+    expect(titles()).toEqual([]);
+  });
+
+  it("applies a filter from its select, keeps the search and can clear them", async () => {
+    await mount("/?q=o");
+    const select = root.querySelector('[data-filter="quality"]');
+    expect([...select.options].map((o) => o.value)).toEqual(["", "1080p", "4K"]);
+    select.value = "4K";
+    select.dispatchEvent(new Event("change"));
+    await settle();
+    expect(router.currentRoute.value.fullPath).toBe("/?q=o&quality=4K");
+    expect(titles()).toEqual(["Juego de tronos"]);
+    root.querySelector(".filters__clear").click();
+    await settle();
+    expect(router.currentRoute.value.fullPath).toBe("/?q=o");
+    expect(root.querySelector(".filters__clear")).toBeNull();
   });
 
   it("filters as the user types and keeps the search in the query", async () => {
