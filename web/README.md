@@ -61,9 +61,13 @@ the browser points the web at another TMDB proxy, for example a local one.
 The build goes to `tools/cositalogo-api/dist/` (gitignored), which the
 `cositalogo` Worker uploads as its
 [static assets](https://developers.cloudflare.com/workers/static-assets/).
-`run_worker_first = ["/api", "/api/*"]` in its `wrangler.toml` sends API
-requests to the Worker before looking at files, so a file can never shadow
-an endpoint and an unknown API path is a JSON 404, never the app. Other paths
+`run_worker_first = ["/api", "/api/*", "/assets/*"]` in its `wrangler.toml`
+sends API requests to the Worker before looking at files, so a file can never
+shadow an endpoint and an unknown API path is a JSON 404, never the app. The
+Worker also serves the hashed files under `/assets/` through the `ASSETS`
+binding with long-lived caching, and answers a missing one with an uncached
+JSON 404: the single-page fallback would otherwise hand out `index.html` for
+it, cached for a year under a script URL. Other paths
 are served from the build without running the Worker, and
 `not_found_handling = "single-page-application"` answers a navigation to any
 path that is not a file (`/movie/550`, a reload, a shared link) with
@@ -71,6 +75,5 @@ path that is not a file (`/movie/550`, a reload, a shared link) with
 
 The web has to share the API's origin to sign in: the session cookie is
 `SameSite=Lax` and the API sends no CORS headers. `public/_headers` adds
-`X-Robots-Tag: noindex` to every file (the page also has the `robots` meta)
-and long-lived caching to the hashed files under `/assets/`; Vite's dev
-server does not apply it. There is no service worker.
+`X-Robots-Tag: noindex` to every file the Worker does not serve (the page
+also has the `robots` meta); Vite's dev server does not apply it. There is no service worker.
