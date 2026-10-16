@@ -1,7 +1,20 @@
-import { TMDB_URL_RE, TMDB_ID_RE, IMDB_ID_RE } from "../../../site/rules.js";
-import { IMG, proxyGet } from "../../../site/tmdb.js";
-import { nameOf, yearOf } from "../../../site/forms.js";
-import { groupPosters } from "../../../site/poster-picker.js";
+import { TMDB_URL_RE, TMDB_ID_RE, IMDB_ID_RE } from "../../../shared/rules.js";
+import { nameOf, yearOf } from "../lib/forms.js";
+import { groupPosters } from "../lib/posters.js";
+
+export const IMG = "https://image.tmdb.org/t/p";
+export const TMDB_PROXY_URL = "https://cositeca-tmdb-proxy.christt105.workers.dev";
+
+/**
+ * GET from the TMDB proxy. `localStorage.tmdbProxy`, when set, points it at
+ * another proxy (for example `wrangler dev` on localhost).
+ */
+export async function proxyGet(path) {
+  const base = localStorage.getItem("tmdbProxy") || TMDB_PROXY_URL;
+  const res = await fetch(`${base}${path}`);
+  if (!res.ok) throw new Error(`proxy ${path} failed: ${res.status}`);
+  return res.json();
+}
 
 const TYPES = { movie: "movie", tv: "series" };
 

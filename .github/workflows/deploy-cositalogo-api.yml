@@ -9,8 +9,7 @@ on:
       - "tools/cositalogo-api/wrangler.toml"
       - "web/**"
       - "vite.config.js"
-      - "scripts/validation.js"
-      - "site/rules.js"
+      - "shared/**"
       - ".github/workflows/deploy-cositalogo-api.yml"
   workflow_dispatch:
 

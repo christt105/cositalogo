@@ -4,7 +4,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSy
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { linkKey } from "../site/rules.js";
+import { linkKey } from "../shared/rules.js";
 import { isEntrypoint } from "../tools/cositalogo-api/backup/entrypoint.js";
 import { exportBackup, writeBackup } from "../tools/cositalogo-api/backup/export.js";
 import { readBackup, restoreSql } from "../tools/cositalogo-api/backup/restore.js";

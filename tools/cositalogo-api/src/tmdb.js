@@ -1,4 +1,4 @@
-import { englishTitle, keepEnglishTranslations } from "../../../scripts/validation.js";
+import { englishTitle, keepEnglishTranslations } from "./validation.js";
 import { HttpError } from "./http.js";
 
 const API = "https://api.themoviedb.org/3";

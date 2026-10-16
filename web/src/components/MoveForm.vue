@@ -1,6 +1,6 @@
 <script setup>
 import { computed, reactive, ref, shallowRef } from "vue";
-import { seasonOptions } from "../../../site/forms.js";
+import { seasonOptions } from "../lib/forms.js";
 import { getTmdbTitle } from "../api/tmdb.js";
 import { TYPE_LABELS } from "../lib/catalog.js";
 import { seasonFromForm } from "../lib/links.js";

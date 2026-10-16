@@ -1,4 +1,4 @@
-import { matchesSearch } from "../../../site/rules.js";
+import { matchesSearch } from "../../../shared/rules.js";
 
 export const TYPE_LABELS = { movie: "Película", series: "Serie" };
 

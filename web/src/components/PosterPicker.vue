@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, shallowRef, watch } from "vue";
-import { POSTER_PAGE } from "../../../site/poster-picker.js";
+import { POSTER_PAGE } from "../lib/posters.js";
 import { getTmdbPosters } from "../api/tmdb.js";
 
 /**

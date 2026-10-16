@@ -1,6 +1,6 @@
-import { test, describe } from "node:test";
+import { describe, test } from "vitest";
 import assert from "node:assert/strict";
-import { groupPosters, languageName } from "../site/poster-picker.js";
+import { groupPosters, languageName } from "./posters.js";
 
 const poster = (file, lang, votes = 0, rating = 0) => ({ file_path: `/${file}.jpg`, iso_639_1: lang, vote_count: votes, vote_average: rating });
 

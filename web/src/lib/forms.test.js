@@ -1,7 +1,11 @@
-import { test, describe } from "node:test";
+import { describe, test } from "vitest";
 import assert from "node:assert/strict";
-import { yearOf, nameOf, seasonOptions, checkboxGroup, validateLink } from "../site/forms.js";
-import { GROUP_ID, OTHER_GROUP_ID, config, link } from "./fixtures.js";
+import { yearOf, nameOf, seasonOptions, validateLink } from "./forms.js";
+
+const GROUP_ID = "2229558644";
+const OTHER_GROUP_ID = "2142474284";
+const link = (messageId, topicId) => `https://t.me/c/${GROUP_ID}/${topicId ? `${topicId}/` : ""}${messageId}`;
+const config = () => ({ groups: { [GROUP_ID]: "Grupo 1", [OTHER_GROUP_ID]: "Grupo 2" } });
 
 describe("yearOf", () => {
   test("takes the year from a movie release date", () => {
@@ -76,25 +80,6 @@ describe("seasonOptions", () => {
   });
 });
 
-describe("checkboxGroup", () => {
-  test("renders one checkbox per value and checks the selected ones", () => {
-    const html = checkboxGroup("audio", ["Castellano", "Inglés"], ["Inglés"]);
-    assert.equal(
-      html,
-      '<label class="check"><input type="checkbox" name="audio" value="Castellano"> Castellano</label>' +
-        '<label class="check"><input type="checkbox" name="audio" value="Inglés" checked> Inglés</label>'
-    );
-  });
-
-  test("escapes the values", () => {
-    assert.match(checkboxGroup("subs", ['<b>"x"</b>']), /value="&lt;b&gt;&quot;x&quot;&lt;\/b&gt;"/);
-  });
-
-  test("renders nothing for an empty list", () => {
-    assert.equal(checkboxGroup("audio", []), "");
-  });
-});
-
 describe("validateLink", () => {
   const { groups } = config();
 
@@ -120,7 +105,7 @@ describe("validateLink", () => {
     }
   });
 
-  test("rejects links from groups outside the Cositeca", () => {
+  test("rejects links from groups outside the Cositálogo", () => {
     assert.match(validateLink("https://t.me/c/1111111111/42", groups), /ninguno de los grupos/);
   });
 });

@@ -1,5 +1,4 @@
-import { TELEGRAM_LINK_RE } from "./rules.js";
-import { esc } from "./ui.js";
+import { TELEGRAM_LINK_RE } from "../../../shared/rules.js";
 
 export function yearOf(result) {
   const date = result.release_date || result.first_air_date || "";
@@ -22,12 +21,6 @@ export function seasonOptions(seasons) {
   return options;
 }
 
-export function checkboxGroup(name, values, checkedValues = []) {
-  return values
-    .map((v) => `<label class="check"><input type="checkbox" name="${name}" value="${esc(v)}"${checkedValues.includes(v) ? " checked" : ""}> ${esc(v)}</label>`)
-    .join("");
-}
-
 /** Error message for a Telegram message link, or "" when it is empty or valid for one of `groups`. */
 export function validateLink(link, groups) {
   if (!link) return "";
@@ -39,7 +32,7 @@ export function validateLink(link, groups) {
     return "Tiene que ser https://t.me/c/<grupo>/<mensaje>, copiado con Copiar enlace.";
   }
   if (!Object.prototype.hasOwnProperty.call(groups, match[1])) {
-    return "Ese link no es de ninguno de los grupos de la Cositeca.";
+    return "Ese link no es de ninguno de los grupos del Cositálogo.";
   }
   return "";
 }

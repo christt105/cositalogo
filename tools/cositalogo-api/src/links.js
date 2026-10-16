@@ -1,5 +1,5 @@
-import { ValidationError, validateLinkEntry, validatePoster } from "../../../scripts/validation.js";
-import { linkKey } from "../../../site/rules.js";
+import { ValidationError, validateLinkEntry, validatePoster } from "./validation.js";
+import { linkKey } from "../../../shared/rules.js";
 import { audit } from "./audit.js";
 import { refreshTitle, seasonValue } from "./catalog.js";
 import { HttpError } from "./http.js";
