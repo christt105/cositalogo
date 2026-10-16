@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import worker from "../tools/tmdb-proxy/worker.js";
 import { IMDB_ID_RE } from "../site/rules.js";
 
-const PAGES = "https://christt105.github.io";
+const WEB = "https://cositalogo.christt105.workers.dev";
 const BASE = "https://proxy.test";
 
 function makeLimiter(success = true) {
@@ -68,9 +68,9 @@ afterEach(() => {
 
 describe("origin checks", () => {
   test("an allowed Origin is served with its CORS header", async () => {
-    const res = await call("/movie/550", { headers: { Origin: PAGES } });
+    const res = await call("/movie/550", { headers: { Origin: WEB } });
     assert.equal(res.status, 200);
-    assert.equal(res.headers.get("Access-Control-Allow-Origin"), PAGES);
+    assert.equal(res.headers.get("Access-Control-Allow-Origin"), WEB);
     assert.deepEqual(await res.json(), { id: 550 });
     assert.equal(upstreamCalls.length, 1);
     assert.equal(new URL(upstreamCalls[0].url).pathname, "/3/movie/550");
@@ -92,9 +92,9 @@ describe("origin checks", () => {
   });
 
   test("a request without Origin but with an allowed Referer is served", async () => {
-    const res = await call("/movie/550", { headers: { Referer: `${PAGES}/cositeca/add.html` } });
+    const res = await call("/movie/550", { headers: { Referer: `${WEB}/#/add` } });
     assert.equal(res.status, 200);
-    assert.equal(res.headers.get("Access-Control-Allow-Origin"), PAGES);
+    assert.equal(res.headers.get("Access-Control-Allow-Origin"), WEB);
   });
 
   test("a disallowed or malformed Referer is rejected", async () => {
@@ -106,14 +106,14 @@ describe("origin checks", () => {
   });
 
   test("a Referer with userinfo is judged by its real host", async () => {
-    const res = await call("/movie/550", { headers: { Referer: `${PAGES}@evil.example/` } });
+    const res = await call("/movie/550", { headers: { Referer: `${WEB}@evil.example/` } });
     assert.equal(res.status, 403);
     assert.equal(upstreamCalls.length, 0);
   });
 
   test("a disallowed Origin is not rescued by an allowed Referer", async () => {
     const res = await call("/movie/550", {
-      headers: { Origin: "https://evil.example", Referer: `${PAGES}/cositeca/` },
+      headers: { Origin: "https://evil.example", Referer: `${WEB}/` },
     });
     assert.equal(res.status, 403);
   });
@@ -123,8 +123,8 @@ describe("origin checks", () => {
     assert.equal(res.status, 403);
   });
 
-  test("the Cositálogo Worker origins are accepted", async () => {
-    for (const origin of ["https://cositalogo-api.christt105.workers.dev", "https://cositalogo.christt105.workers.dev"]) {
+  test("the Cositálogo origin is accepted", async () => {
+    for (const origin of [WEB]) {
       const res = await call("/movie/550", { headers: { Origin: origin } });
       assert.equal(res.status, 200, origin);
       assert.equal(res.headers.get("Access-Control-Allow-Origin"), origin);
@@ -156,6 +156,8 @@ describe("origin checks", () => {
       "https://evilchristt105.github.io",
       "http://christt105.github.io",
       "https://christt105.github.io/",
+      "https://christt105.github.io",
+      "https://cositalogo-api.christt105.workers.dev",
       "http://localhost.evil.com",
       "http://cositalogo-api.christt105.workers.dev",
       "https://cositalogo-apix.christt105.workers.dev",
@@ -171,73 +173,19 @@ describe("origin checks", () => {
 });
 
 describe("internal token", () => {
-  const TOKEN = "s3cret-internal-token";
-
-  test("a request with the matching token is served without Origin or Referer", async () => {
-    const limiter = makeLimiter();
-    const res = await call("/search?q=fight%20club", {
-      headers: { "X-Internal-Token": TOKEN },
-      env: makeEnv({ INTERNAL_TOKEN: TOKEN, RATE_LIMITER: limiter }),
-    });
-    assert.equal(res.status, 200);
-    assert.equal(res.headers.get("Access-Control-Allow-Origin"), null);
-    assert.equal(upstreamCalls.length, 1);
-    assert.deepEqual(limiter.calls, [{ key: "internal" }]);
-  });
-
-  test("internal requests share one rate-limit key even with a client IP", async () => {
-    const limiter = makeLimiter();
-    await call("/movie/550", {
-      headers: { "X-Internal-Token": TOKEN, "CF-Connecting-IP": "203.0.113.7" },
-      env: makeEnv({ INTERNAL_TOKEN: TOKEN, RATE_LIMITER: limiter }),
-    });
-    assert.deepEqual(limiter.calls, [{ key: "internal" }]);
-  });
-
-  test("a wrong, truncated or extended token is rejected", async () => {
-    for (const token of ["wrong", TOKEN.slice(0, -1), `${TOKEN}x`, TOKEN.toUpperCase()]) {
-      const res = await call("/movie/550", {
-        headers: { "X-Internal-Token": token },
-        env: makeEnv({ INTERNAL_TOKEN: TOKEN }),
-      });
-      assert.equal(res.status, 403, token);
-    }
-    assert.equal(upstreamCalls.length, 0);
-  });
-
-  test("without INTERNAL_TOKEN configured no header value bypasses the origin check", async () => {
-    for (const env of [makeEnv(), makeEnv({ INTERNAL_TOKEN: "" })]) {
-      for (const token of ["", "undefined", "anything"]) {
-        const res = await call("/movie/550", { headers: { "X-Internal-Token": token }, env });
-        assert.equal(res.status, 403, JSON.stringify(token));
-      }
-    }
-    assert.equal(upstreamCalls.length, 0);
-  });
-
-  test("browser requests keep working when INTERNAL_TOKEN is configured", async () => {
-    const res = await call("/movie/550", {
-      headers: { Origin: PAGES },
-      env: makeEnv({ INTERNAL_TOKEN: TOKEN }),
-    });
-    assert.equal(res.status, 200);
-    assert.equal(res.headers.get("Access-Control-Allow-Origin"), PAGES);
-  });
-
-  test("an internal request still fails closed without the rate limiter", async () => {
-    const env = makeEnv({ INTERNAL_TOKEN: TOKEN });
-    delete env.RATE_LIMITER;
-    const res = await call("/movie/550", { headers: { "X-Internal-Token": TOKEN }, env });
-    assert.equal(res.status, 503);
+  test("X-Internal-Token no longer bypasses the origin check", async () => {
+    const env = makeEnv({ INTERNAL_TOKEN: "s3cret-internal-token" });
+    const res = await call("/movie/550", { headers: { "X-Internal-Token": "s3cret-internal-token" }, env });
+    assert.equal(res.status, 403);
     assert.equal(upstreamCalls.length, 0);
   });
 });
 
 describe("methods", () => {
   test("OPTIONS preflight from an allowed origin returns 204 with CORS headers", async () => {
-    const res = await call("/search", { method: "OPTIONS", headers: { Origin: PAGES } });
+    const res = await call("/search", { method: "OPTIONS", headers: { Origin: WEB } });
     assert.equal(res.status, 204);
-    assert.equal(res.headers.get("Access-Control-Allow-Origin"), PAGES);
+    assert.equal(res.headers.get("Access-Control-Allow-Origin"), WEB);
     assert.match(res.headers.get("Access-Control-Allow-Methods"), /GET/);
   });
 
@@ -248,9 +196,9 @@ describe("methods", () => {
   });
 
   test("non-GET methods are rejected with 405", async () => {
-    const res = await call("/movie/550", { method: "POST", headers: { Origin: PAGES } });
+    const res = await call("/movie/550", { method: "POST", headers: { Origin: WEB } });
     assert.equal(res.status, 405);
-    assert.equal(res.headers.get("Access-Control-Allow-Origin"), PAGES);
+    assert.equal(res.headers.get("Access-Control-Allow-Origin"), WEB);
   });
 });
 
@@ -258,10 +206,10 @@ describe("rate limiting", () => {
   test("a missing RATE_LIMITER binding fails closed with 503 and logs an error", async () => {
     const env = makeEnv();
     delete env.RATE_LIMITER;
-    const res = await call("/movie/550", { headers: { Origin: PAGES }, env });
+    const res = await call("/movie/550", { headers: { Origin: WEB }, env });
     assert.equal(res.status, 503);
     assert.deepEqual(await res.json(), { error: "rate limiter is not configured" });
-    assert.equal(res.headers.get("Access-Control-Allow-Origin"), PAGES);
+    assert.equal(res.headers.get("Access-Control-Allow-Origin"), WEB);
     assert.equal(upstreamCalls.length, 0);
     assert.equal(consoleErrors.length, 1);
     assert.match(consoleErrors[0], /RATE_LIMITER/);
@@ -269,7 +217,7 @@ describe("rate limiting", () => {
 
   test("a rate-limited client gets 429 without reaching TMDB", async () => {
     const res = await call("/movie/550", {
-      headers: { Origin: PAGES },
+      headers: { Origin: WEB },
       env: makeEnv({ RATE_LIMITER: makeLimiter(false) }),
     });
     assert.equal(res.status, 429);
@@ -279,7 +227,7 @@ describe("rate limiting", () => {
   test("the limiter is keyed by the client IP", async () => {
     const limiter = makeLimiter();
     await call("/movie/550", {
-      headers: { Origin: PAGES, "CF-Connecting-IP": "203.0.113.7" },
+      headers: { Origin: WEB, "CF-Connecting-IP": "203.0.113.7" },
       env: makeEnv({ RATE_LIMITER: limiter }),
     });
     assert.deepEqual(limiter.calls, [{ key: "203.0.113.7" }]);
@@ -290,7 +238,7 @@ describe("cache", () => {
   test("a cached response gets the CORS header of the current requester", async () => {
     const cached = new Response(JSON.stringify({ id: 550 }), {
       status: 200,
-      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": PAGES },
+      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": WEB },
     });
     globalThis.caches = {
       default: {
@@ -327,7 +275,7 @@ describe("cache", () => {
 
 describe("routes", () => {
   async function upstreamFor(path) {
-    const res = await call(path, { headers: { Origin: PAGES } });
+    const res = await call(path, { headers: { Origin: WEB } });
     assert.equal(res.status, 200, path);
     return new URL(upstreamCalls.at(-1).url);
   }
@@ -344,7 +292,7 @@ describe("routes", () => {
 
   test("a JWT-looking key is sent as a Bearer token instead of api_key", async () => {
     const res = await call("/tv/1399", {
-      headers: { Origin: PAGES },
+      headers: { Origin: WEB },
       env: makeEnv({ TMDB_API_KEY: "eyJdummy" }),
     });
     assert.equal(res.status, 200);
@@ -377,7 +325,7 @@ describe("routes", () => {
       "/images?type=movie&id=x",
       "/find/nm0000093",
     ]) {
-      const res = await call(path, { headers: { Origin: PAGES } });
+      const res = await call(path, { headers: { Origin: WEB } });
       assert.equal(res.status, 404, path);
     }
     assert.equal(upstreamCalls.length, 0);
@@ -385,14 +333,14 @@ describe("routes", () => {
 
   test("the find route accepts exactly the IMDb ids the site accepts", async () => {
     for (const id of ["tt1", "tt123456789012", "tt1234567890123", "tt", "ttx1"]) {
-      const res = await call(`/find/${id}`, { headers: { Origin: PAGES } });
+      const res = await call(`/find/${id}`, { headers: { Origin: WEB } });
       assert.equal(res.status === 200, IMDB_ID_RE.test(id), id);
     }
   });
 
   test("a missing TMDB_API_KEY returns 500", async () => {
     const res = await call("/movie/550", {
-      headers: { Origin: PAGES },
+      headers: { Origin: WEB },
       env: makeEnv({ TMDB_API_KEY: undefined }),
     });
     assert.equal(res.status, 500);
