@@ -12,7 +12,7 @@ dependencies. It exposes only a few read-only routes, always with
   the seasons list)
 - `GET /find/<imdbId>` (resolve an IMDb id)
 
-Only `https://cositalogo.christt105.workers.dev`, `http://localhost`,
+Only the origins in `ALLOWED_ORIGINS` (`worker.js`), the web's own, `http://localhost`,
 `http://127.0.0.1` and `http://192.168.x.x` (local previews, any port) are
 served: the `Origin` header (or, when it is absent, the origin of `Referer`)
 must match one of them exactly, otherwise the Worker answers 403, so requests
