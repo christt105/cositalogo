@@ -1,16 +1,15 @@
 # Cositálogo API
 
-Cloudflare Worker with a D1 database that holds the catalog. Since the issue
-flow was frozen, D1 is the source of truth and the YAML files no longer change.
-The web app in `web/` reads and writes through this API and is served by this
-same Worker (see [Web app](#web-app)); the old GitHub Pages site only
-redirects here (`site/redirect.js`).
+Cloudflare Worker with a D1 database that holds the catalog, the only source
+of truth. The web app in `web/` reads and writes through this API and is
+served by this same Worker (see [Web app](#web-app)); the old GitHub Pages
+site only redirects here (`site/redirect.js`).
 
 ## Endpoints
 
 | Method and path | Who | What |
 |---|---|---|
-| `GET /api/catalog` | anyone | Whole catalog, same shape as `site/catalog.json`, with `ETag` and 304 |
+| `GET /api/catalog` | anyone | Whole catalog as one JSON array, with `ETag` and 304 |
 | `GET /api/titles/:type/:id` | anyone | `{ entry, detail }` for one title (`type` is `movie` or `series`) |
 | `GET /api/titles/:type/:id/links` | signed in | The title's links with their `id`, in catalog order, each with `canDelete` for this user |
 | `GET /api/settings` | anyone | `{ qualities, groups, languages }`, the values links are validated against; 503 while any is missing |
@@ -81,10 +80,13 @@ Secrets: `SESSION_SECRET`, `TELEGRAM_WEBHOOK_SECRET` (the `secret_token`
 given to `setWebhook`), `WRITE_PASSWORD` and `TMDB_API_KEY`. `BOT_USERNAME` is
 a plain variable in `wrangler.toml`.
 
-Links are validated with the same rules as the YAML files
-(`scripts/validation.js`). Qualities, Telegram groups and languages come from
-the `settings` table (keys `qualities`, `groups`, `languages`, JSON values with
-the same content as the YAML files); writes answer 503 while any is missing.
+Links are validated by `src/validation.js` (quality, season, languages, tags
+and a `https://t.me/c/<group>/[<topic>/]<message>` link from a known group;
+the same message cannot be linked twice, whatever the topic). Qualities,
+Telegram groups and languages come from the `settings` table (keys
+`qualities`, `groups`, `languages`, JSON values); writes answer 503 while any
+is missing. There is no screen to change them: edit the row with
+`wrangler d1 execute`.
 
 ## How the catalog is served
 
@@ -102,11 +104,11 @@ does nothing on `workers.dev`.
 ```sh
 cd tools/cositalogo-api
 printf 'TMDB_API_KEY=...\nSESSION_SECRET=any-local-secret\nTELEGRAM_WEBHOOK_SECRET=any\nWRITE_PASSWORD=any\n' > .dev.vars
-XDG_CONFIG_HOME=~/scratch/xdg wrangler d1 migrations apply cositalogo --local
-XDG_CONFIG_HOME=~/scratch/xdg wrangler d1 execute cositalogo --local \
-  --command "INSERT INTO settings VALUES ('qualities', '[\"1080p\",\"4K\"]')"  # and groups, languages
+wrangler d1 migrations apply cositalogo --local
+node backup/restore.js <backup checkout> --out restore.sql   # real data from the backup repository
+wrangler d1 execute cositalogo --local --file restore.sql
 npm run build:web   # from the repository root, see below
-XDG_CONFIG_HOME=~/scratch/xdg wrangler dev
+wrangler dev
 ```
 
 `wrangler dev` and `wrangler deploy` stop with "The directory specified by the
@@ -135,23 +137,25 @@ Serving the web from the API's own origin is what lets it sign in later: the
 session cookie is `SameSite=Lax` and the API sends no CORS headers, so a page
 on another site could neither send the cookie nor read the answers.
 
-Screens: the grid with search (`matchesSearch` from `site/rules.js`) over
+Screens: the grid with search (`matchesSearch` from `shared/rules.js`) over
 `GET /api/catalog`, with the search kept in the hash (`#/?q=...`); a title
-page (`#/movie/:id`, `#/series/:id`) over `GET /api/titles/...`; sign-in
-(`#/login`, opens the bot link and polls `POST /api/login/poll`); unlock
-(`#/unlock`, the shared password); and Add (`#/add`, TMDB search through
-`cositeca-tmdb-proxy`, season, quality, languages, tags and a Telegram link
-checked with `site/forms.js`). Members can edit any link and delete their
-own (admins, any) from the title page, with the ids from
-`GET /api/titles/:type/:id/links`. Every write reloads the shared catalog. There is no service worker. `web/public/_headers` adds
+page (`#/movie/:id`, `#/series/:id`) over `GET /api/titles/...`, where
+members add another version, edit, delete or move links and change the
+poster; sign-in (`#/login`, opens the bot link and polls
+`POST /api/login/poll`); unlock (`#/unlock`, the shared password); Add
+(`#/add`, TMDB search through `cositeca-tmdb-proxy`, poster picker for new
+titles, season, quality, languages, tags and a Telegram link checked with
+`web/src/lib/forms.js`); and Admin (`#/admin`, the audit log with undo, a
+title's history with `?title=`, and members and admins). Every write reloads
+the shared catalog. There is no service worker. `web/public/_headers` adds
 `X-Robots-Tag: noindex` to every file (the page also has the `robots` meta)
 and long-lived caching to the hashed files under `/assets/`.
 
 `web/src/` is split by responsibility:
 
 - `api/`: `client.js` makes every call (same origin, JSON bodies with their
-  content type, errors as `ApiError` with the `status`), with one function
-  per resource on top (`getCatalog`, `getTitle`).
+  content type, errors as `ApiError` with the `status`), with one module per
+  resource on top; `tmdb.js` talks to the TMDB proxy instead.
 - `composables/`: reactive state. `useCatalog` is created once in `App.vue`
   and shared with `provide`/`inject`; it holds the titles, an index by
   `type/tmdb`, the loading status and `reload()`. `useSession` (who is signed
@@ -159,10 +163,11 @@ and long-lived caching to the hashed files under `/assets/`.
   use) are provided the same way.
 - `views/`: one per route, listed in `routes.js`; `lib/route.js` matches the
   hash against that table and anything else shows `NotFoundView`.
-- `components/`: pieces of a screen (`AppHeader`, `LinkForm`, `LinkRow`,
-  `TmdbSearch`, `TitleCard`, and `WriteGate`, which only shows its content
-  to members).
-- `lib/`: plain functions without Vue.
+- `components/`: pieces of a screen (`LinkForm`, `LinkRow`, `MoveForm`,
+  `PosterPicker`, `TmdbSearch`, `AuditLog`, `MembersPanel`, and `WriteGate`,
+  which only shows its content to members).
+- `lib/`: plain functions without Vue (form checks, poster grouping, audit
+  labels, routing), each with its Vitest file next to it.
 
 ```sh
 npm run build:web    # writes tools/cositalogo-api/dist
@@ -187,49 +192,12 @@ from that folder with `wrangler deploy` if it ever changes.
 deploys the Worker with the web as its assets and then checks that
 `/api/catalog`, a missing title and the web page answer as expected. It runs
 on every push to `main` that touches the Worker's code, migrations,
-`wrangler.toml`, `web/`, `vite.config.js` or the shared `site/rules.js` and
-`scripts/validation.js`, and can be run by hand. Deploying by hand needs
+`wrangler.toml`, `web/`, `vite.config.js` or `shared/`, and can be run by
+hand. Deploying by hand needs
 `npm run build:web` first. The Worker's secrets live in
 Cloudflare (`wrangler secret put`) and survive deploys, so the workflow does
 not set them; the repository's `CLOUDFLARE_API_TOKEN` needs Workers and D1
 edit access.
-
-## Importing the YAML files
-
-`import/import.js` turns `movies/`, `series/` and the config YAML files into
-SQL that makes a D1 database hold exactly that, reusing the build's own title
-loading and TMDB cache (`.cache/tmdb.json`; titles missing from it are fetched,
-so `TMDB_API_KEY` is needed) and this Worker's `titleEntry` for the stored
-fragments. Run it from the repository root:
-
-```sh
-set -a; . ~/.config/cositeca/tmdb.env; set +a
-node tools/cositalogo-api/import/import.js --out import.sql     # --now <ms> pins the timestamps
-cd tools/cositalogo-api
-wrangler d1 execute cositalogo --local --file ../../import.sql   # or --remote
-```
-
-Until the cut-over the YAML files are the source of truth, so every run makes
-D1 match them: titles and links that are new or changed are written, and
-anything the files do not mention is deleted, including links added through the
-API. Running it twice with the same files writes nothing (every statement is an
-upsert guarded by a comparison, and the snapshot is only rebuilt when its body
-changes). A title whose fragment changed has its links deleted and inserted
-again so they keep the order of the file. Titles added in the same second get
-`created_at` values a few milliseconds apart that reproduce the build's order.
-
-`import/compare.js` checks a served catalog against the published one and lists
-the titles that are missing, extra or different (with the fields), ignoring the
-order of `qualities` and noting if the titles come in another order:
-
-```sh
-node tools/cositalogo-api/import/compare.js site/catalog.json http://localhost:8787/api/catalog
-node tools/cositalogo-api/import/compare.js https://christt105.github.io/cositeca/catalog.json https://cositalogo.christt105.workers.dev/api/catalog
-```
-
-Differences against the published catalog are expected when the TMDB cache is
-newer or older than the last deploy (a changed poster, for instance); compare
-against a fresh `npm run build` to check the import itself.
 
 ## Backups
 
@@ -249,8 +217,8 @@ CLOUDFLARE_ACCOUNT_ID=... CLOUDFLARE_API_TOKEN=... node tools/cositalogo-api/bac
 `backup/restore.js` turns a backup into SQL that replaces the titles, links,
 settings, admins, members and audit of a database and rebuilds every fragment
 and the snapshot as the API would. Restore into an empty D1 first (`wrangler
-d1 create`, then `wrangler d1 migrations apply`) and compare it with
-`import/compare.js` before pointing anything at it:
+d1 create`, then `wrangler d1 migrations apply`) and compare its
+`/api/catalog` with production before pointing anything at it:
 
 ```sh
 node tools/cositalogo-api/backup/restore.js <backup checkout> --out restore.sql

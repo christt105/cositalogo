@@ -1,267 +1,67 @@
-# Cositeca
+# Cositálogo
 
-A small static index of links to messages in private Telegram groups,
-enriched with [TMDB](https://www.themoviedb.org/) metadata (titles, posters,
-synopses). Deployed on GitHub Pages.
+An index of links to messages in private Telegram groups, enriched with
+[TMDB](https://www.themoviedb.org/) metadata (titles, posters, synopses).
+Live at https://cositalogo.christt105.workers.dev/. How to use it, in
+Spanish: [`GUIA.md`](GUIA.md).
 
-## How it works
+## Layout
 
-- Each title is a YAML file under `movies/<tmdbId>.yaml` or `series/<tmdbId>.yaml`.
-- `npm run validate` checks every file against the rules below.
-- `npm run build` fetches metadata from TMDB and writes `site/catalog.json`
-  (minified) plus one `site/titles/<type>-<id>.json` per title with the
-  synopsis, tagline, genres, runtime or season count, backdrop and vote,
-  taken from the same TMDB responses the catalog already needs (no extra
-  requests). `site/titles/` is wiped on every build so deleted titles leave
-  no orphans; both outputs are gitignored. Movie and series lookups add
-  `append_to_response=translations`, so each catalog entry can carry an
-  `englishTitle` (the en-US translation, else any other English one) that the
-  grid search matches alongside `title` and `originalTitle`; it is omitted
-  when it equals either of them ignoring case and accents.
-- `site/` is a static, dependency-free page that reads `catalog.json`. A
-  hash router in `app.js` serves `#/` (grid with search and filters, both
-  kept in the hash so back/forward and shared URLs restore them),
-  `#/movie/<tmdbId>` and `#/series/<tmdbId>` (one page per title, which
-  also fetches `titles/<type>-<id>.json` when it exists) and `#/add`
-  (`add.js`: TMDB search through the proxy, poster picker and a form that
-  opens the add issue with every field prefilled by query string; it reads
-  `site/meta.json`, written by `build`, for the quality, language and group
-  lists). It accepts `#/add?q=<search>` and `#/add?tmdb=<url>`.
-- `site/rules.js` holds the regexes and URL helpers shared by the page and
-  the Node scripts (`scripts/lib.js` imports it), so `site/` needs no build
-  step and the rules exist once.
-- `site/tmdb.js` (Worker proxy and the `meta.json` cache), `site/forms.js`
-  (pure form helpers) and `site/poster-picker.js` are shared by the add
-  view, the title page's edit panel (`edit.js`) and the reidentify panel
-  (`reid.js`), so none of them imports another view.
-- New entries, link fixes/deletions and poster changes come in through
-  GitHub Issue forms (`add.yml`, `fix.yml`, `poster.yml`, `reidentify.yml`, told apart by
-  their `add`/`fix`/`poster` label), processed by
-  `.github/workflows/add-entry.yml`, which pushes a `bot/entry-<issue>`
-  branch, opens a PR, and squash-merges it once `validate.yml` passes. The
-  title page and the add page open those forms with every field prefilled
-  by query string, so users only review and submit. Both issue workflows
-  (`add-entry.yml` and `batch.yml`) run on `opened` and `edited`, but only
-  for open issues without the `bug` or `validation-failed` label, so
-  editing an applied (closed) issue does nothing and an issue that failed
-  with `invalid` can be fixed by editing it. `validation-failed` marks an
-  issue whose bot PR failed `validate.yml`: the PR and its
-  `bot/entry-<issue>` branch stay open for a maintainer to fix or close.
-  They share the `catalog-writes` concurrency group, so only one run writes
-  to the catalog at a time. A run queued that way carries the event payload
-  from when it was queued, so the scripts first reread the issue with `gh`
-  and do nothing if it is closed or has one of those labels by then.
-  GitHub keeps only one pending run per concurrency group, so a burst of
-  three writes cancels the middle one silently. `sweep.yml` recovers those:
-  hourly, on demand and whenever an `add-entry.yml` or `batch.yml` run ends
-  cancelled, it looks for open `entry`/`entry-batch` issues with no bot
-  comment and no hold label (every run that reaches an issue comments on
-  it), and only if there are any it reprocesses them one by one inside
-  `catalog-writes` with `scripts/sweep.js`. An edit to an issue the bot
-  already answered (for example one labelled `invalid`) is not recovered
-  if its run gets cancelled; editing it again retries.
-- `fix.yml` deletes the link at `old_link` when `new_link` is `-`, or when
-  `new_link` is empty and no other field is filled. An empty `new_link`
-  next to any other field keeps the current link. The same rule applies to
-  `fix` operations in batch mode.
-- `reidentify.yml` moves one link (`old_link`) or, if empty, every link of
-  the entry at `tmdb` to another title (`new_tmdb`), creating the target
-  file or appending to an existing one and deleting the source if it ends
-  up empty. Seasons: movie to series requires `season` (applied to every
-  moved link), series to movie drops it, series to series keeps each link's
-  own unless `season` overrides it. `poster` and `seasonPosters` describe
-  the old title, so they are never carried over; the optional `poster`
-  field sets one for the target. Moving a single link only prunes
-  `seasonPosters` entries for seasons with no links left. Batch mode
-  accepts it as an operation of type `reidentify`.
+| Path | What |
+|---|---|
+| `web/` | Vue 3 + Vite web app: grid, title pages, sign-in, add, edit, move, posters and the admin page |
+| `tools/cositalogo-api/` | Cloudflare Worker `cositalogo`: the JSON API over a D1 database, serving the built web as static assets; also the D1 migrations, the nightly backup export/restore and the Worker that keeps the old `cositalogo-api` name redirecting. See its [README](tools/cositalogo-api/README.md) |
+| `shared/rules.js` | Telegram link and search rules used by both the API and the web |
+| `tools/tmdb-proxy/` | Cloudflare Worker `cositeca-tmdb-proxy`: read-only TMDB proxy for the web's searches and poster picker. See its [README](tools/tmdb-proxy/README.md) |
+| `tools/telegram-bot/` | Cloudflare Worker `cositeca-telegram-bot`: the retired bot, which only answers with the link to the web |
+| `site/` | The old GitHub Pages address (christt105.github.io/cositeca), now only a redirect to the web that keeps the `#/...` route |
+| `test/` | Node tests for the Workers, the backup and the shared rules |
 
-## Data format
+D1 is the only source of truth for the catalog. Every write goes through the
+API and lands in an `audit` table with the value before and after, so an
+admin can undo it from the web. A nightly workflow in the private
+`christt105/cositalogo-backup` repository exports the whole database there as
+JSON files (see [Backups](tools/cositalogo-api/README.md#backups)).
 
-`groups.yaml` maps an internal Telegram group id to a display name.
-`qualities.yaml` is the closed, ordered list of valid quality values.
-`languages.yaml` holds the closed lists of valid `audio` and `subs` values
-(the `subs` list is the audio one plus `Forzados`). Add a language there and
-it becomes valid everywhere; the issue forms mention the options in the
-field description (quality, audio and subs are plain text inputs because
-GitHub only prefills `input` fields from the query string, not dropdowns).
+## Development
 
-```yaml
-title: Some title          # informational only, the site uses the TMDB title
-poster: https://example.com/poster.jpg  # optional, overrides the TMDB poster
-seasonPosters:              # series only, optional: per-season poster override
-  1: https://example.com/season1.jpg  # key matches a `season` value below
-  all: https://example.com/complete.jpg
-links:
-  - season: 1               # series only: integer >= 0 (0 = specials), "all", or any
-                             # other number, does not need to exist in TMDB
-    quality: 1080p           # required, must be one of qualities.yaml
-    audio: [Castellano]      # optional, values from languages.yaml audio
-    subs: [Castellano]       # optional, values from languages.yaml subs
-    tags: [HDR]              # optional, free-form strings
-    link: https://t.me/c/2142474284/1036/81222
-```
-
-Validation rules (implemented once in `scripts/lib.js`, reused by `validate`,
-`build` and `add-entry`):
-
-- Filename matches `^\d+\.yaml$` and lives under `movies/` or `series/`.
-- `links` is non-empty. `quality` must be listed in `qualities.yaml`.
-- `audio` and `subs`, if present, are arrays of strings listed in
-  `languages.yaml`, without duplicates. Language goes here, not in `tags`.
-- `season` is required under `series/` (integer >= 0 or the string `all`) and
-  forbidden under `movies/`. It does not need to match a season TMDB knows
-  about: if `build` can't find it there, the season falls back to a
-  "Temporada N" name and the poster described below, instead of dropping
-  the whole title.
-- `link` must match `^https://t\.me/c/(\d+)/(?:(\d+)/)?(\d+)$`. The captured
-  group id must exist in `groups.yaml`. Invite links (`t.me/+...`,
-  `joinchat`, or anything not starting with `https://t.me/c/`) are rejected.
-- The same `link` cannot appear twice in the whole repository.
-- `poster`, if present, must be an `https://` URL and is used as-is instead
-  of the TMDB poster. The add issue form has an optional Portada field for
-  it; the bot writes it at the top of the file (and replaces an existing
-  one).
-- `seasonPosters`, series only, optional: a map from a `season` value (same
-  number or `"all"` used in `links`) to a poster URL. Checked before the
-  TMDB season poster, and used as the fallback when TMDB has no poster for
-  that season or the season doesn't exist there at all. Values must be
-  `https://` URLs too.
-
-## Tests
-
-`npm test` runs the unit tests in `test/` with the Node test runner
-(`node --test`, no extra dependencies). They cover the pure helpers of
-`scripts/lib.js` and `site/rules.js`, the issue body parsing, the four
-catalog operations (`add`, `fix`, `poster`, `reidentify`) against an
-injected in-memory file system, the batch overlay of `scripts/apply-batch.js`
-and the queue of `site/queue.js`. Nothing reaches the network, the real
-catalog or GitHub: `fetch` is stubbed and the batch tests work inside a
-temporary directory, so no TMDB key is needed.
-
-Run one file with `node --test test/operations-add.test.js`, or one case
-with `node --test --test-name-pattern "seasonPosters" test/*.test.js`.
-
-Test names that start with `known bug` or `known limitation` pin down
-behaviour that is wrong or surprising but still in place, so whoever fixes
-it only has to flip the assertion. The `test` job in `.github/workflows/validate.yml`
-runs `npm test` on every push and pull request, next to `npm run validate`.
-
-`npm run test:web` runs the tests of the new web app in `web/` with Vitest
-and happy-dom (`web/src/*.test.js`, configured in `vite.config.js`), and the
-same CI job runs it and `npm run build:web` after `npm test`. The web app
-itself is described in `tools/cositalogo-api/README.md`.
-
-## TMDB
-
-A minimal client in `scripts/lib.js` uses native `fetch`. If the API key
-starts with `eyJ` it is sent as a `Bearer` token, otherwise as `?api_key=`.
-Every request uses `language=es-ES`. Titles can be identified by a
-`themoviedb.org` URL, a `tmdb:<id>` reference, or an IMDB id (resolved via
-`/3/find`). URLs may carry a language prefix (`/es/movie/550`), a slug, a
-trailing slash, a query string or a `/season/<n>` suffix; the season in the
-URL is ignored, it still has to go in the Temporada field.
-
-`validate` and `build` share a JSON response cache (`.cache/tmdb.json` by
-default, override with `TMDB_CACHE_PATH`) so re-running them only fetches
-TMDB data for ids not already cached. In CI (`deploy.yml`) that directory is
-persisted with `actions/cache`, keyed per run and restored from the most
-recent previous run, so a push that only adds one new title doesn't refetch
-metadata for the whole catalog. Only the English translations of a movie or
-series response are kept in the cache, and a cached movie or series entry
-without them counts as stale (it is refetched, falling back to the old entry
-if TMDB fails).
-
-## PWA and offline
-
-`site/manifest.webmanifest` (relative `start_url`/`scope`, standalone,
-icons in `site/assets/`, generated from `icon.svg`) makes the site
-installable; `index.html` also carries the `apple-touch-icon` and
-`apple-mobile-web-app-*` tags iOS needs. `site/sw.js` is a service worker
-registered from `app.js`: it precaches the shell plus `catalog.json` and
-`meta.json` on install, then serves everything same-origin (and posters
-from `image.tmdb.org`, capped at 300) network-first with cache fallback,
-so a deploy is picked up as soon as there is network and the last seen
-catalog still opens offline. A new worker activates immediately
-(`skipWaiting` + `clients.claim`) and the page reloads once when the
-controller changes. Bump `CACHE` in `sw.js` when the shell file list
-changes.
-
-## TMDB proxy (Cloudflare Worker)
-
-The page never holds a TMDB key. The guided "Añadir" page searches TMDB
-through a small Cloudflare Worker in `tools/tmdb-proxy/` (`worker.js`, no
-dependencies, `wrangler.toml`). It exposes only a few read-only routes,
-always with `language=es-ES`, and rejects anything else with 404:
-
-- `GET /search?q=<text>&type=movie|tv|multi&page=<1-99>`
-- `GET /images?type=movie|tv&id=<tmdbId>` (posters, `es,en,null`)
-- `GET /movie/<tmdbId>` and `GET /tv/<tmdbId>` (title info; series include
-  the seasons list)
-- `GET /find/<imdbId>` (resolve an IMDB id)
-
-Only `https://christt105.github.io`, `http://localhost`,
-`http://127.0.0.1` and `http://192.168.x.x` (local previews, any port) are
-served: the `Origin` header (or, when it is absent, the origin of
-`Referer`) must match one of them exactly, otherwise the Worker answers
-403, so requests without either header (curl, scripts) are rejected.
-Responses are cached at the edge (1 h for searches, 1 day for images and
-series) and a `[[ratelimits]]` binding caps each IP at 60 requests per
-minute so the Worker cannot be used as a public TMDB mirror. If that
-binding is missing the Worker answers 503 instead of serving unlimited.
-
-The Telegram bot calls the proxy over a service binding, without any
-`Origin`. It sends an `X-Internal-Token` header instead, and the Worker
-skips the origin check only when that header matches its `INTERNAL_TOKEN`
-secret exactly. Those requests share a single `internal` rate-limit key
-(service-binding requests carry no `CF-Connecting-IP`). When
-`INTERNAL_TOKEN` is not set, no header value bypasses the origin check.
-
-Local development (no account needed): put `TMDB_API_KEY=...` in
-`tools/tmdb-proxy/.dev.vars` (gitignored) and run
-`npx wrangler dev` from that directory; it listens on `localhost:8787`.
-
-Deploy: every push to `main` that touches `tools/tmdb-proxy/**` runs
-`.github/workflows/deploy-tmdb-proxy.yml` (tests, then `wrangler deploy`
-with the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repository
-secrets); it can also be started by hand from the Actions tab. Both deploy
-workflows upload `INTERNAL_TOKEN` from the repository secret of the same name
-before deploying, so the two Workers always share one value. `wrangler
-deploy` keeps the Worker's other secrets, which are managed by hand (from
-`tools/tmdb-proxy/`, with the same two variables in the environment):
+Node 22 or later (the tests use `node:sqlite`).
 
 ```sh
-npx wrangler secret put TMDB_API_KEY
+npm ci
+npm test            # Node tests in test/ (Workers against an in-memory D1, backup, rules)
+npm run test:web    # Vitest + happy-dom for web/
+npm run build:web   # builds web/ into tools/cositalogo-api/dist
+npm run dev:web     # Vite dev server, proxies /api to wrangler dev on :8787
 ```
 
-Roll back with `git revert` of the offending commit (which redeploys) or
-`npx wrangler rollback` for an immediate switch to the previous version.
+Running the API locally with `wrangler dev`, a local D1 restored from a
+backup, and the secrets each Worker needs are described in the READMEs of
+`tools/cositalogo-api/` and `tools/tmdb-proxy/`. Nothing in the tests reaches
+the network.
 
-The Worker is deployed at
-`https://cositeca-tmdb-proxy.christt105.workers.dev`, which is the
-`TMDB_PROXY_URL` constant in `site/rules.js`. Setting
-`localStorage.tmdbProxy` in the browser (e.g. to `http://localhost:8787`
-while running `wrangler dev`) overrides that constant, which is handy for
-local development; leave it unset to use the deployed Worker.
+## CI and deploys
 
-## Catalog order
+- `validate.yml`: `npm test`, `npm run test:web` and `npm run build:web` on
+  every pull request and push to `main`.
+- `deploy-cositalogo-api.yml`: on pushes to `main` that touch the API, its
+  migrations, `web/`, `vite.config.js` or `shared/`; tests, builds the web,
+  applies pending D1 migrations, deploys the `cositalogo` Worker and smoke
+  tests it.
+- `deploy-tmdb-proxy.yml` and `deploy-telegram-bot.yml`: deploy their Worker
+  when its folder changes.
+- `deploy.yml`: publishes `site/` (the redirect) to GitHub Pages when it
+  changes.
 
-`build` sorts the catalog by when each `movies/<id>.yaml` / `series/<id>.yaml`
-file was first added to git history (newest first), not alphabetically. It
-reads this from `git log --diff-filter=A`, so it needs full history
-(`fetch-depth: 0` in `deploy.yml`); files not yet committed sort first. Ties
-(e.g. files added in the same bulk-import commit) fall back to alphabetical
-by title.
-
-## Adding or fixing an entry
-
-See [`GUIA.md`](GUIA.md) (Spanish) for the end-user flow through GitHub
-Issues.
+The deploys use the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`
+repository secrets; each Worker's own secrets are set in Cloudflare with
+`wrangler secret put` and survive deploys. Roll back with `git revert` of the
+offending commit (which redeploys) or `wrangler rollback`.
 
 ## Attribution
 
-This product uses the TMDB API but is not endorsed or certified by TMDB.
-
-The footer shows the official TMDB logo (`site/assets/tmdb.svg`, the
-"primary short, blue" SVG from
+This product uses the TMDB API but is not endorsed or certified by TMDB. The
+web shows the official TMDB logo (`web/public/tmdb.svg`, the "primary short,
+blue" SVG from
 [TMDB's logos and attribution page](https://www.themoviedb.org/about/logos-attribution)),
 unmodified and linked to themoviedb.org, as their terms require.
