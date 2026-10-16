@@ -1,8 +1,7 @@
 const TMDB = "https://api.themoviedb.org/3";
 
 const ALLOWED_ORIGINS = [
-  /^https:\/\/christt105\.github\.io$/,
-  /^https:\/\/cositalogo(?:-api)?\.christt105\.workers\.dev$/,
+  /^https:\/\/cositalogo\.christt105\.workers\.dev$/,
   /^https?:\/\/localhost(:\d{1,5})?$/,
   /^https?:\/\/127\.0\.0\.1(:\d{1,5})?$/,
   /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d{1,5})?$/,
@@ -68,25 +67,6 @@ function requestOrigin(request) {
   return parseOrigin(request.headers.get("Referer"));
 }
 
-/** Compares two strings without returning early on the first differing character. */
-function safeEqual(a, b) {
-  const x = new TextEncoder().encode(a);
-  const y = new TextEncoder().encode(b);
-  let diff = x.length ^ y.length;
-  for (let i = 0; i < x.length; i++) {
-    diff |= x[i] ^ (y[i] ?? 0);
-  }
-  return diff === 0;
-}
-
-/** True when the request carries the shared INTERNAL_TOKEN (sent by the Telegram bot over its service binding). */
-function isInternalRequest(request, env) {
-  const expected = env.INTERNAL_TOKEN;
-  const provided = request.headers.get("X-Internal-Token");
-  if (!expected || !provided) return false;
-  return safeEqual(provided, expected);
-}
-
 function corsHeaders(origin) {
   if (!isAllowedOrigin(origin)) return { Vary: "Origin" };
   return {
@@ -107,11 +87,10 @@ function json(body, status, headers) {
 
 export default {
   async fetch(request, env, ctx) {
-    const internal = isInternalRequest(request, env);
     const origin = requestOrigin(request);
     const cors = corsHeaders(origin);
 
-    if (!internal && !isAllowedOrigin(origin)) {
+    if (!isAllowedOrigin(origin)) {
       return json({ error: "origin not allowed" }, 403, cors);
     }
     if (request.method === "OPTIONS") {
@@ -142,7 +121,7 @@ export default {
       console.error("RATE_LIMITER binding is missing; refusing to serve unlimited requests");
       return json({ error: "rate limiter is not configured" }, 503, cors);
     }
-    const key = internal ? "internal" : (request.headers.get("CF-Connecting-IP") ?? "unknown");
+    const key = request.headers.get("CF-Connecting-IP") ?? "unknown";
     const { success } = await env.RATE_LIMITER.limit({ key });
     if (!success) {
       return json({ error: "too many requests" }, 429, cors);

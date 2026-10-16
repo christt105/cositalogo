@@ -32,7 +32,3 @@ jobs:
           workingDirectory: tools/tmdb-proxy
           command: deploy
           wranglerVersion: "4.134.0"
-          secrets: |
-            INTERNAL_TOKEN
-        env:
-          INTERNAL_TOKEN: ${{ secrets.INTERNAL_TOKEN }}
