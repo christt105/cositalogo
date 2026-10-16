@@ -1,4 +1,5 @@
 import AddView from "./views/AddView.vue";
+import AdminView from "./views/AdminView.vue";
 import CatalogView from "./views/CatalogView.vue";
 import LoginView from "./views/LoginView.vue";
 import TitleView from "./views/TitleView.vue";
@@ -18,4 +19,5 @@ export const ROUTES = [
   { path: "/add", view: AddView },
   { path: "/login", view: LoginView },
   { path: "/unlock", view: UnlockView },
+  { path: "/admin", view: AdminView },
 ];

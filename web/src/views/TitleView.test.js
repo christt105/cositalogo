@@ -60,6 +60,7 @@ describe("TitleView", () => {
     expect(button(rows()[0], "Borrar")).not.toBeNull();
     expect(button(rows()[1], "Borrar")).toBeNull();
     expect(button(view.root, "Añadir otra versión").getAttribute("href")).toBe("#/add?type=series&tmdb=1399");
+    expect(view.root.querySelector("a[href^='#/admin']")).toBeNull();
   });
 
   it("shows no write buttons to a signed-in user without the password", async () => {
@@ -114,6 +115,11 @@ describe("TitleView", () => {
     await settle();
     expect(api.calls.find((c) => c.method === "DELETE").path).toBe("/api/links/11");
     expect(view.root.textContent).toContain("no está en el Cositálogo");
+  });
+
+  it("links admins to the title's history", async () => {
+    await mount({ id: 9, name: "Jefa", member: true, admin: true });
+    expect(view.root.querySelector("a[href='#/admin?title=series:1399']").textContent).toBe("Historial");
   });
 
   it("offers moving only the links the user may delete", async () => {

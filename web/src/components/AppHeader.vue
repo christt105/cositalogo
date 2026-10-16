@@ -26,6 +26,7 @@ async function signOut() {
       <template v-if="user">
         <a v-if="user.member" class="btn btn--primary" href="#/add">Añadir</a>
         <a v-else class="btn" :href="unlockHref">Desbloquear</a>
+        <a v-if="user.admin" class="btn btn--link" href="#/admin">Admin</a>
         <span class="header__user">{{ user.name }}</span>
         <button type="button" class="btn btn--link" @click="signOut">Salir</button>
       </template>

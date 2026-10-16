@@ -30,9 +30,16 @@ describe("AppHeader", () => {
     const api = signedIn({ id: 1, name: "Ana", member: true, admin: false });
     view = await mountView(AppHeader, { path: "/" });
     expect(button(view.root, "Añadir").getAttribute("href")).toBe("#/add");
+    expect(button(view.root, "Admin")).toBeNull();
     button(view.root, "Salir").click();
     await settle();
     expect(api.calls.at(-1)).toMatchObject({ method: "POST", path: "/api/logout" });
     expect(button(view.root, "Iniciar sesión")).not.toBeNull();
+  });
+
+  it("links admins to the admin page", async () => {
+    signedIn({ id: 9, name: "Jefa", member: true, admin: true });
+    view = await mountView(AppHeader, { path: "/" });
+    expect(view.root.querySelector("a[href='#/admin']").textContent).toBe("Admin");
   });
 });

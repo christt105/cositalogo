@@ -125,6 +125,7 @@ function remove(link) {
             <template v-if="entry.originalTitle && entry.originalTitle !== entry.title"> · {{ entry.originalTitle }}</template>
           </p>
           <a v-if="session.canWrite.value" class="btn btn--primary" :href="`#/add?type=${entry.type}&tmdb=${entry.tmdb}`">Añadir otra versión</a>
+          <a v-if="session.user.value?.admin" class="btn btn--link" :href="`#/admin?title=${entry.type}:${entry.tmdb}`">Historial</a>
         </div>
       </div>
       <p v-if="error" class="form__error" role="alert">{{ error }}</p>
