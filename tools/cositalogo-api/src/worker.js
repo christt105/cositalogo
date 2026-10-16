@@ -1,3 +1,4 @@
+import { serveAsset } from "./assets.js";
 import { addAdmin, listAdmins, listMembers, removeAdmin, revokeMember, unlock } from "./access.js";
 import { listAudit } from "./audit.js";
 import { serveCatalog, serveTitle } from "./catalog.js";
@@ -74,6 +75,7 @@ export async function handle(request, env) {
 export default {
   async fetch(request, env) {
     try {
+      if (new URL(request.url).pathname.startsWith("/assets/")) return await serveAsset(request, env);
       return await handle(request, env);
     } catch (err) {
       if (err instanceof HttpError) return json({ error: err.message }, err.status);
