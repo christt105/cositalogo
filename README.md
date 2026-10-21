@@ -13,7 +13,7 @@ and an admin can undo it.
 | Path | What |
 |---|---|
 | `web/` | The Vue 3 + Vite web app. See its [README](web/README.md) |
-| `tools/cositalogo-api/` | Cloudflare Worker `cositalogo`: the JSON API over a D1 (SQLite) database, which also serves the built web. Migrations and the backup scripts live here too. See its [README](tools/cositalogo-api/README.md) |
+| `tools/cositalogo-api/` | Cloudflare Worker `cositalogo`: the JSON API over a D1 (SQLite) database, which also serves the built web and an RSS feed of new versions at `/feed.xml`. Migrations and the backup scripts live here too. See its [README](tools/cositalogo-api/README.md) |
 | `tools/tmdb-proxy/` | Cloudflare Worker that forwards the web's TMDB searches, so the TMDB key never reaches the browser. See its [README](tools/tmdb-proxy/README.md) |
 | `shared/rules.js` | Telegram link and search rules used by both the API and the web |
 | `test/` | Node tests for the Workers and the backup scripts (the web's tests sit next to its files) |
