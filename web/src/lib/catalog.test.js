@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detailMeta, filterCatalog, formatRuntime, filterOptions, searchCatalog, seasonSummary, titleKey } from "./catalog.js";
+import { detailMeta, filterCatalog, formatRuntime, filterOptions, searchCatalog, seasonSummary, sortCatalog, titleKey } from "./catalog.js";
 
 const movie = { type: "movie", tmdb: 550, imdb: "tt0137523", title: "El club de la lucha", originalTitle: "Fight Club", links: [] };
 const series = (seasons) => ({ type: "series", tmdb: 1399, title: "Juego de tronos", links: seasons.map((season) => ({ season })) });
@@ -98,5 +98,41 @@ describe("detailMeta", () => {
     expect(detailMeta("movie", null)).toBe("");
     expect(detailMeta("series", {})).toBe("");
     expect(detailMeta("series", { numberOfSeasons: null })).toBe("");
+
+describe("sortCatalog", () => {
+  const t = (title, year) => ({ title, year });
+  const catalog = [t("Zeta", "2001"), t("alma", null), t("Árbol", "1999"), t("Beta", "2001"), t("Eco", undefined), t("Ñu", "1980")];
+  const titles = (items) => items.map((i) => i.title);
+
+  it("keeps catalog order by default and for unknown values", () => {
+    expect(sortCatalog(catalog, "")).toBe(catalog);
+    expect(sortCatalog(catalog, undefined)).toBe(catalog);
+    expect(sortCatalog(catalog, "bogus")).toBe(catalog);
+  });
+
+  it("reverses the catalog order for oldest", () => {
+    expect(titles(sortCatalog(catalog, "oldest"))).toEqual(["Ñu", "Eco", "Beta", "Árbol", "alma", "Zeta"]);
+  });
+
+  it("sorts by year with ties in catalog order and missing years last", () => {
+    expect(titles(sortCatalog(catalog, "year-desc"))).toEqual(["Zeta", "Beta", "Árbol", "Ñu", "alma", "Eco"]);
+    expect(titles(sortCatalog(catalog, "year-asc"))).toEqual(["Ñu", "Árbol", "Zeta", "Beta", "alma", "Eco"]);
+  });
+
+  it("sorts by name ignoring case and accents", () => {
+    expect(titles(sortCatalog(catalog, "name-asc"))).toEqual(["alma", "Árbol", "Beta", "Eco", "Ñu", "Zeta"]);
+    expect(titles(sortCatalog(catalog, "name-desc"))).toEqual(["Zeta", "Ñu", "Eco", "Beta", "Árbol", "alma"]);
+  });
+
+  it("keeps catalog order between titles that compare equal by name", () => {
+    const same = [{ title: "Á", id: 1 }, { title: "a", id: 2 }, { title: "A", id: 3 }];
+    expect(sortCatalog(same, "name-asc").map((i) => i.id)).toEqual([1, 2, 3]);
+    expect(sortCatalog(same, "name-desc").map((i) => i.id)).toEqual([1, 2, 3]);
+  });
+
+  it("never mutates the input", () => {
+    const copy = [...catalog];
+    for (const sort of ["oldest", "year-desc", "year-asc", "name-asc", "name-desc"]) sortCatalog(catalog, sort);
+    expect(catalog).toEqual(copy);
   });
 });

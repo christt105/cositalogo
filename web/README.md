@@ -11,7 +11,7 @@ history mode and are listed in `src/routes.js`:
 
 | Route | Screen |
 |---|---|
-| `/` | Grid of posters with search by title (also English or original), TMDB id or IMDb id; the search is kept in `/?q=...` |
+| `/` | Grid of posters with search by title (also English or original), TMDB id or IMDb id; the search is kept in `/?q=...`, the filters and the sort order (`sort`, omitted for the default newest first) in the same query |
 | `/movie/:id`, `/series/:id` | Title page: poster, synopsis and its links. Members add another version, edit, delete or move links and change the poster |
 | `/login` | Sign-in: opens the bot link in Telegram and waits for the answer; `?next=` is where it goes back to |
 | `/unlock` | The shared write password that turns a signed-in user into a member; also takes `?next=` |
