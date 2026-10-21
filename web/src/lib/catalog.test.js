@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterCatalog, filterOptions, searchCatalog, seasonSummary, titleKey } from "./catalog.js";
+import { detailMeta, filterCatalog, formatRuntime, filterOptions, searchCatalog, seasonSummary, titleKey } from "./catalog.js";
 
 const movie = { type: "movie", tmdb: 550, imdb: "tt0137523", title: "El club de la lucha", originalTitle: "Fight Club", links: [] };
 const series = (seasons) => ({ type: "series", tmdb: 1399, title: "Juego de tronos", links: seasons.map((season) => ({ season })) });
@@ -72,5 +72,31 @@ describe("filterCatalog", () => {
     expect(filterCatalog(catalog, { quality: "1080p" })).toEqual([a, b]);
     expect(filterCatalog(catalog, { quality: "4K", audio: "Inglés", subs: "Español" })).toEqual([a]);
     expect(filterCatalog(catalog, { quality: "4K", audio: "Español" })).toEqual([]);
+  });
+});
+
+describe("formatRuntime", () => {
+  it("formats hours and minutes", () => {
+    expect(formatRuntime(135)).toBe("2 h 15 min");
+    expect(formatRuntime(120)).toBe("2 h");
+    expect(formatRuntime(45)).toBe("45 min");
+  });
+
+  it("is empty when missing or not positive", () => {
+    for (const v of [null, undefined, 0, -5, NaN, "90"]) expect(formatRuntime(v)).toBe("");
+  });
+});
+
+describe("detailMeta", () => {
+  it("uses the runtime for movies and the season count for series", () => {
+    expect(detailMeta("movie", { runtime: 135, numberOfSeasons: 3 })).toBe("2 h 15 min");
+    expect(detailMeta("series", { numberOfSeasons: 8, runtime: 50 })).toBe("8 temporadas");
+    expect(detailMeta("series", { numberOfSeasons: 1 })).toBe("1 temporada");
+  });
+
+  it("is empty when the detail is missing or partial", () => {
+    expect(detailMeta("movie", null)).toBe("");
+    expect(detailMeta("series", {})).toBe("");
+    expect(detailMeta("series", { numberOfSeasons: null })).toBe("");
   });
 });

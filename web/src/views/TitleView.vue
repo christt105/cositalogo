@@ -8,7 +8,7 @@ import LinkRow from "../components/LinkRow.vue";
 import PosterForm from "../components/PosterForm.vue";
 import { useCatalog } from "../composables/useCatalog.js";
 import { useSession } from "../composables/useSession.js";
-import { TYPE_LABELS } from "../lib/catalog.js";
+import { TYPE_LABELS, detailMeta } from "../lib/catalog.js";
 import { errorMessage } from "../lib/errors.js";
 
 const props = defineProps({
@@ -22,6 +22,7 @@ const catalog = useCatalog();
 const session = useSession();
 const router = useRouter();
 const entry = shallowRef(null);
+const detail = shallowRef(null);
 const owned = shallowRef([]);
 const seasons = shallowRef([]);
 const state = ref("loading");
@@ -31,6 +32,8 @@ const moved = ref("");
 const editingPoster = ref(false);
 const seasonsReady = ref(props.type !== "series");
 let seasonsLoaded = false;
+
+const meta = computed(() => detailMeta(props.type, detail.value));
 
 /** Catalog links with the id and `canDelete` the signed-in user sees, matched by position and URL. */
 const links = computed(() =>
@@ -56,10 +59,13 @@ async function loadLinks() {
 
 async function load() {
   try {
-    entry.value = (await getTitle(props.type, props.id)).entry;
+    const title = await getTitle(props.type, props.id);
+    entry.value = title.entry;
+    detail.value = title.detail ?? null;
     state.value = "ready";
   } catch (err) {
     entry.value = null;
+    detail.value = null;
     state.value = err.status === 404 ? "missing" : "error";
     if (err.status !== 404) console.error("Could not load the title", err);
   }
@@ -134,6 +140,9 @@ function remove(link) {
             {{ TYPE_LABELS[entry.type] }} {{ entry.year }}
             <template v-if="entry.originalTitle && entry.originalTitle !== entry.title"> · {{ entry.originalTitle }}</template>
           </p>
+          <p v-if="detail?.tagline" class="selected__tagline">{{ detail.tagline }}</p>
+          <p v-if="detail?.overview" class="selected__overview">{{ detail.overview }}</p>
+          <p v-if="meta" class="panel__hint selected__meta">{{ meta }}</p>
           <div class="selected__actions">
             <RouterLink v-if="session.canWrite.value" class="btn btn--primary" :to="`/add?type=${entry.type}&tmdb=${entry.tmdb}`">Añadir otra versión</RouterLink>
             <button v-if="session.canWrite.value && !editingPoster" type="button" class="btn" @click="editingPoster = true">Cambiar portada</button>
