@@ -2,6 +2,7 @@ import { serveAsset } from "./assets.js";
 import { addAdmin, listAdmins, listMembers, removeAdmin, revokeMember, unlock } from "./access.js";
 import { listAudit } from "./audit.js";
 import { serveCatalog, serveTitle } from "./catalog.js";
+import { serveFeed } from "./feed.js";
 import { HttpError, json, readJson } from "./http.js";
 import { addLink, deleteLink, listTitleLinks, moveLink, parseTarget, setPoster, updateLink } from "./links.js";
 import { logout, pollLogin, startLogin, telegramWebhook } from "./login.js";
@@ -11,6 +12,7 @@ import { undo } from "./undo.js";
 
 const ROUTES = [
   ["GET", /^\/api\/catalog$/, (req, env) => serveCatalog(req, env.DB)],
+  ["GET", /^\/feed\.xml$/, (req, env) => serveFeed(req, env.DB)],
   ["GET", /^\/api\/titles\/(movie|series)\/(\d{1,9})$/, (req, env, [type, id]) => serveTitle(env.DB, type, Number(id))],
   ["GET", /^\/api\/titles\/(movie|series)\/(\d{1,9})\/links$/, async (req, env, [type, id]) => json(await listTitleLinks(env.DB, await requireUser(req, env), type, Number(id)))],
   ["GET", /^\/api\/settings$/, async (req, env) => {

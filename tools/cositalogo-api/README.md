@@ -9,6 +9,7 @@ writes through this API and is served by this same Worker as static assets.
 | Method and path | Who | What |
 |---|---|---|
 | `GET /api/catalog` | anyone | Whole catalog as one JSON array, with `ETag` and 304 |
+| `GET /feed.xml` | anyone | RSS 2.0 feed of the latest 50 new versions, see [RSS feed](#rss-feed) |
 | `GET /api/titles/:type/:id` | anyone | `{ entry, detail }` for one title (`type` is `movie` or `series`) |
 | `GET /api/titles/:type/:id/links` | signed in | The title's links with their `id`, in catalog order, each with `canDelete` for this user |
 | `GET /api/settings` | anyone | `{ qualities, groups, languages }`, the values links are validated against; 503 while any is missing |
@@ -97,6 +98,20 @@ one-row `snapshot` table inside D1. `GET /api/catalog` reads only the snapshot
 version on each request and keeps the body in memory until it changes.
 Compression is left to Cloudflare's edge. The Cache API is not used because it
 does nothing on `workers.dev`.
+
+## RSS feed
+
+`GET /feed.xml` lists new versions, not titles, newest first (at most 50
+items, `cache-control: public, max-age=300`). It is one D1 query over `links`
+joined with `titles`. Links of the same title added on the same UTC day are
+grouped into one item whose title lists their qualities (`Dune (2021) · 4K,
+1080p`); a title that gets more links on a later day appears again. The
+item's `pubDate` is the newest link of the group and its `guid` is
+`<type>:<tmdb id>:<newest link id>`. The description is the TMDB overview plus a
+summary of qualities, seasons, audio and subtitles, and `media:thumbnail` is
+the poster. Telegram URLs are never included. `/feed.xml` is in
+`run_worker_first` in `wrangler.toml` so it reaches the Worker instead of the
+single-page fallback.
 
 ## Local development
 

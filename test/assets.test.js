@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import worker from "../tools/cositalogo-api/src/worker.js";
 
 const INDEX = "<!doctype html><html></html>";
@@ -56,4 +57,10 @@ test("API paths never reach the assets binding", async () => {
   const res = await get("/api/nope", e);
   assert.equal(res.status, 404);
   assert.equal(e.requests.length, 0);
+});
+
+test("/feed.xml is configured to reach the Worker before the single-page fallback", async () => {
+  const toml = await readFile(new URL("../tools/cositalogo-api/wrangler.toml", import.meta.url), "utf8");
+  const [, list] = /run_worker_first = \[(.*)\]/.exec(toml);
+  assert.ok(list.includes('"/feed.xml"'));
 });
