@@ -43,6 +43,51 @@ export function filterCatalog(catalog, filters) {
   );
 }
 
+export const SORT_OPTIONS = [
+  { value: "", label: "Añadidos recientemente" },
+  { value: "oldest", label: "Añadidos hace más tiempo" },
+  { value: "year-desc", label: "Año, más recientes" },
+  { value: "year-asc", label: "Año, más antiguos" },
+  { value: "name-asc", label: "Nombre A-Z" },
+  { value: "name-desc", label: "Nombre Z-A" },
+];
+
+const yearOf = (item) => {
+  const year = Number.parseInt(item.year, 10);
+  return Number.isFinite(year) ? year : null;
+};
+
+const compareYears = (direction) => (a, b) => {
+  const ya = yearOf(a);
+  const yb = yearOf(b);
+  if (ya === null || yb === null) return (ya === null) - (yb === null);
+  return (ya - yb) * direction;
+};
+
+const compareNames = (direction) => (a, b) => a.title.localeCompare(b.title, "es", { sensitivity: "base" }) * direction;
+
+/**
+ * A sorted copy of a catalog served newest first. `sort` is one of the
+ * `SORT_OPTIONS` values; the default and unknown values keep catalog order.
+ * Ties keep catalog order and titles without a year always go last.
+ */
+export function sortCatalog(catalog, sort) {
+  switch (sort) {
+    case "oldest":
+      return [...catalog].reverse();
+    case "year-desc":
+      return [...catalog].sort(compareYears(-1));
+    case "year-asc":
+      return [...catalog].sort(compareYears(1));
+    case "name-asc":
+      return [...catalog].sort(compareNames(1));
+    case "name-desc":
+      return [...catalog].sort(compareNames(-1));
+    default:
+      return catalog;
+  }
+}
+
 /** The seasons a series has links for, as `T1`, `T1-3` or `T1,3`; empty for movies or when any link covers the whole series. */
 export function seasonSummary(item) {
   if (item.type !== "series") return "";

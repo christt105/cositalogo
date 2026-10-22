@@ -3,7 +3,7 @@ import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import TitleCard from "../components/TitleCard.vue";
 import { useCatalog } from "../composables/useCatalog.js";
-import { FILTER_KEYS, TYPE_LABELS, filterCatalog, filterOptions, searchCatalog } from "../lib/catalog.js";
+import { FILTER_KEYS, SORT_OPTIONS, TYPE_LABELS, filterCatalog, filterOptions, searchCatalog, sortCatalog } from "../lib/catalog.js";
 import { debounce } from "../lib/debounce.js";
 
 const SEARCH_DEBOUNCE_MS = 150;
@@ -21,11 +21,12 @@ const FILTER_LABELS = { type: "Tipo", quality: "Calidad", audio: "Audio", subs: 
 const filters = computed(() => Object.fromEntries(FILTER_KEYS.map((key) => [key, props.query.get(key) ?? ""])));
 const options = computed(() => ({ type: ["movie", "series"], ...filterOptions(catalog.items.value) }));
 const filtersActive = computed(() => FILTER_KEYS.some((key) => filters.value[key]));
-const items = computed(() => filterCatalog(searchCatalog(catalog.items.value, query.value), filters.value));
+const sort = computed(() => (SORT_OPTIONS.some((option) => option.value === props.query.get("sort")) ? props.query.get("sort") : ""));
+const items = computed(() => sortCatalog(filterCatalog(searchCatalog(catalog.items.value, query.value), filters.value), sort.value));
 const optionLabel = (key, value) => (key === "type" ? TYPE_LABELS[value] + "s" : value);
 
 function updateQuery(changes) {
-  const next = { q: query.value, ...filters.value, ...changes };
+  const next = { q: query.value, ...filters.value, sort: sort.value, ...changes };
   router.replace({ query: Object.fromEntries(Object.entries(next).filter(([, v]) => v)) });
 }
 
@@ -62,6 +63,12 @@ watch(
       <select class="filters__select" :data-filter="key" :value="filters[key]" @change="updateQuery({ [key]: $event.target.value })">
         <option value="">Todos</option>
         <option v-for="value in options[key]" :key="value" :value="value">{{ optionLabel(key, value) }}</option>
+      </select>
+    </label>
+    <label class="filters__field">
+      <span class="filters__label">Ordenar por</span>
+      <select class="filters__select" data-sort :value="sort" @change="updateQuery({ sort: $event.target.value })">
+        <option v-for="option in SORT_OPTIONS" :key="option.value" :value="option.value">{{ option.label }}</option>
       </select>
     </label>
     <button v-if="filtersActive" type="button" class="filters__clear" @click="updateQuery(Object.fromEntries(FILTER_KEYS.map((key) => [key, ''])))">
