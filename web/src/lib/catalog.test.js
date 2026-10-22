@@ -98,6 +98,8 @@ describe("detailMeta", () => {
     expect(detailMeta("movie", null)).toBe("");
     expect(detailMeta("series", {})).toBe("");
     expect(detailMeta("series", { numberOfSeasons: null })).toBe("");
+  });
+});
 
 describe("sortCatalog", () => {
   const t = (title, year) => ({ title, year });
