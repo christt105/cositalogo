@@ -53,3 +53,20 @@ export function seasonSummary(item) {
   const contiguous = seasons.every((s, i) => i === 0 || s === seasons[i - 1] + 1);
   return contiguous ? `T${seasons[0]}-${seasons[seasons.length - 1]}` : `T${seasons.join(",")}`;
 }
+
+/** A runtime in minutes as `2 h 15 min`, `2 h` or `45 min`; empty when it is missing or not positive. */
+export function formatRuntime(minutes) {
+  if (!Number.isFinite(minutes) || minutes <= 0) return "";
+  const h = Math.floor(minutes / 60);
+  const m = Math.round(minutes % 60);
+  if (!h) return `${m} min`;
+  return m ? `${h} h ${m} min` : `${h} h`;
+}
+
+/** The runtime of a movie or the season count of a series from TMDB's detail, e.g. `2 h 15 min` or `3 temporadas`; empty when absent. */
+export function detailMeta(type, detail) {
+  if (type === "movie") return formatRuntime(detail?.runtime);
+  const n = detail?.numberOfSeasons;
+  if (!Number.isInteger(n) || n <= 0) return "";
+  return n === 1 ? "1 temporada" : `${n} temporadas`;
+}

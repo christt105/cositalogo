@@ -377,6 +377,21 @@ body {
   font-size: 1.2rem;
 }
 
+.selected__tagline {
+  margin: 0.5rem 0 0;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.selected__overview {
+  margin: 0.5rem 0 0;
+  line-height: 1.5;
+}
+
+.selected__meta {
+  margin: 0.5rem 0;
+}
+
 .selected__actions {
   display: flex;
   flex-wrap: wrap;

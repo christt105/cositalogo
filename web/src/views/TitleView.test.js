@@ -216,6 +216,32 @@ describe("TitleView", () => {
     expect(view.router.currentRoute.value.fullPath).toBe("/movie/603");
   });
 
+  describe("synopsis", () => {
+    const withDetail = (detail) => ({ "GET /api/titles/series/1399": () => ({ entry: entry([[1, "1080p", L1]]), detail }) });
+
+    it("shows the tagline, overview and season count", async () => {
+      await mount(null, withDetail({ overview: "Nueve familias nobles luchan.", tagline: "Se acerca el invierno", numberOfSeasons: 8 }));
+      expect(view.root.querySelector(".selected__tagline").textContent).toBe("Se acerca el invierno");
+      expect(view.root.querySelector(".selected__overview").textContent).toBe("Nueve familias nobles luchan.");
+      expect(view.root.querySelector(".selected__meta").textContent).toBe("8 temporadas");
+    });
+
+    it("hides the overview when it is empty", async () => {
+      await mount(null, withDetail({ overview: "", tagline: "", numberOfSeasons: 2 }));
+      expect(view.root.querySelector(".selected__overview")).toBeNull();
+      expect(view.root.querySelector(".selected__tagline")).toBeNull();
+      expect(view.root.querySelector(".selected__meta").textContent).toBe("2 temporadas");
+    });
+
+    it("still renders the title when the detail is missing or partial", async () => {
+      await mount(null, { "GET /api/titles/series/1399": () => ({ entry: entry([[1, "1080p", L1]]) }) });
+      expect(view.root.querySelector(".selected__title").textContent).toBe("Juego de tronos");
+      expect(view.root.querySelector(".selected__overview")).toBeNull();
+      expect(view.root.querySelector(".selected__meta")).toBeNull();
+      expect(rows()).toHaveLength(1);
+    });
+  });
+
   it("says when the title does not exist", async () => {
     fakeApi({ "GET /api/catalog": [], "GET /api/me": json({}, 401) });
     view = await mountView(TitleView, { type: "movie", id: "1" });
