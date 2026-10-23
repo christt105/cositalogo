@@ -24,12 +24,14 @@ describe("AppHeader", () => {
     expect(view.root.querySelector(".header__user").textContent).toBe("Ana");
     expect(button(view.root, "Desbloquear").getAttribute("href")).toBe("/unlock");
     expect(button(view.root, "Añadir")).toBeNull();
+    expect(button(view.root, "Peticiones")).toBeNull();
   });
 
   it("lets a member add and sign out", async () => {
     const api = signedIn({ id: 1, name: "Ana", member: true, admin: false });
     view = await mountView(AppHeader, { path: "/" });
     expect(button(view.root, "Añadir").getAttribute("href")).toBe("/add");
+    expect(button(view.root, "Peticiones").getAttribute("href")).toBe("/requests");
     expect(button(view.root, "Admin")).toBeNull();
     button(view.root, "Salir").click();
     await settle();

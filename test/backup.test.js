@@ -22,6 +22,8 @@ const TABLES = {
   admins: "user_id",
   members: "user_id",
   audit: "id",
+  requests: "id",
+  request_votes: "request_id, user_id",
 };
 
 const title = (type, tmdbId, name, extra = {}) => ({
@@ -69,6 +71,9 @@ describe("Cositálogo backup", () => {
       INSERT INTO audit (at, user_id, action, target, before, after) VALUES
         (${SEPTEMBER}, 852128924, 'link.add', 'movie:550', NULL, '{"quality":"4K"}'),
         (${OCTOBER}, 7, 'link.edit', 'movie:680', '{"quality":"720p"}', '{"quality":"1080p"}');
+      INSERT INTO requests (id, type, tmdb_id, season, title, season_name, year, poster, note, requested_by, created_at) VALUES
+        (1, 'series', 1396, 5, 'Breaking Bad', 'Temporada 5', '2008', NULL, 'en VOSE', 7, ${OCTOBER});
+      INSERT INTO request_votes (request_id, user_id, created_at) VALUES (1, 7, ${OCTOBER}), (1, 852128924, ${OCTOBER});
     `);
   });
 
@@ -84,7 +89,7 @@ describe("Cositálogo backup", () => {
   test("writes one file per title, per audit month and the rest, with JSON columns parsed", async () => {
     const files = await exportBackup(queryOf(db));
     assert.deepEqual([...files.keys()].sort(), [
-      "admins.json", "audit/2026-09.json", "audit/2026-10.json", "members.json", "settings.json",
+      "admins.json", "audit/2026-09.json", "audit/2026-10.json", "members.json", "request_votes.json", "requests.json", "settings.json",
       "titles/movie/550.json", "titles/movie/680.json", "titles/series/1396.json",
     ]);
     const series = JSON.parse(files.get("titles/series/1396.json"));
@@ -126,6 +131,21 @@ describe("Cositálogo backup", () => {
     assert.equal(snapshot(db).version, before + 1);
     assert.equal(JSON.parse(snapshot(db).body).length, 2);
     assert.equal(db.sqlite.prepare("SELECT count(*) AS n FROM login_requests").get().n, 1);
+  });
+});
+
+describe("backups from before requests", () => {
+  test("restore without requests.json and request_votes.json", () => {
+    const db = createD1(MIGRATIONS);
+    db.sqlite.exec(restoreSql(fixtureBackup(), NOW));
+    assert.equal(db.sqlite.prepare("SELECT count(*) AS n FROM requests").get().n, 0);
+    const dir = mkdtempSync(join(tmpdir(), "cositalogo-backup-old-"));
+    try {
+      for (const name of ["settings.json", "admins.json", "members.json"]) writeFileSync(join(dir, name), fixtureBackup().get(name));
+      assert.deepEqual([...readBackup(dir).keys()].sort(), ["admins.json", "members.json", "settings.json"]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 

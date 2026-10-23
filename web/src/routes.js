@@ -3,6 +3,7 @@ import AdminView from "./views/AdminView.vue";
 import CatalogView from "./views/CatalogView.vue";
 import LoginView from "./views/LoginView.vue";
 import NotFoundView from "./views/NotFoundView.vue";
+import RequestsView from "./views/RequestsView.vue";
 import TitleView from "./views/TitleView.vue";
 import UnlockView from "./views/UnlockView.vue";
 import { queryParams } from "./lib/route.js";
@@ -23,5 +24,6 @@ export const ROUTES = [
   { path: "/login", component: LoginView, props: withQuery },
   { path: "/unlock", component: UnlockView, props: withQuery },
   { path: "/admin", component: AdminView, props: withQuery },
+  { path: "/requests", component: RequestsView },
   { path: "/:missing(.*)*", component: NotFoundView },
 ];

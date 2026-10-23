@@ -1,6 +1,7 @@
 /**
  * The layout of a backup: one file per title with its links, one file per
- * month of audit, and the settings, admins and members. Columns that hold
+ * month of audit, and the settings, admins, members and title requests
+ * with their votes. Columns that hold
  * JSON text are written parsed so a diff shows the change itself. The
  * catalog fragment (`titles.json`) and the snapshot are left out because a
  * restore rebuilds them.
@@ -11,7 +12,9 @@ export const AUDIT_JSON = ["before", "after"];
 
 export const titlePath = (type, tmdbId) => `titles/${type}/${tmdbId}.json`;
 export const auditPath = (at) => `audit/${new Date(at).toISOString().slice(0, 7)}.json`;
-export const SINGLE_FILES = ["settings.json", "admins.json", "members.json"];
+export const SINGLE_FILES = ["settings.json", "admins.json", "members.json", "requests.json", "request_votes.json"];
+/** Single files that backups written before requests existed do not have. */
+export const OPTIONAL_FILES = ["requests.json", "request_votes.json"];
 export const DIRECTORIES = ["titles", "audit"];
 
 export const serialize = (value) => JSON.stringify(value, null, 2) + "\n";
