@@ -17,6 +17,7 @@ history mode and are listed in `src/routes.js`:
 | `/unlock` | The shared write password that turns a signed-in user into a member; also takes `?next=` |
 | `/add` | Add a link: TMDB search, poster picker for new titles, season, quality, languages, tags and the Telegram link |
 | `/admin` | Admins only: activity log with undo (`?title=` for one title's history, `?tab=members` for members and admins) |
+| `/requests` | Members only: ask for a movie, a whole series or one season, vote for what others asked, see which requests the catalog has answered |
 
 Any other route shows `NotFoundView`. Views get the route's captures and its
 query as props (`query` is a `URLSearchParams`), so they can be tested

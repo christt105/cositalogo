@@ -27,6 +27,7 @@ async function signOut() {
       <template v-if="user">
         <RouterLink v-if="user.member" class="btn btn--primary" to="/add">Añadir</RouterLink>
         <RouterLink v-else class="btn" :to="unlockHref">Desbloquear</RouterLink>
+        <RouterLink v-if="user.member" class="btn btn--link" to="/requests">Peticiones</RouterLink>
         <RouterLink v-if="user.admin" class="btn btn--link" to="/admin">Admin</RouterLink>
         <span class="header__user">{{ user.name }}</span>
         <button type="button" class="btn btn--link" @click="signOut">Salir</button>
