@@ -61,6 +61,8 @@ export async function exportBackup(query, { pageSize = 500 } = {}) {
   files.set("settings.json", serialize(Object.fromEntries(settings.map((r) => [r.key, JSON.parse(r.value)]))));
   files.set("admins.json", serialize(await query("SELECT * FROM admins ORDER BY user_id")));
   files.set("members.json", serialize(await query("SELECT * FROM members ORDER BY user_id")));
+  files.set("requests.json", serialize(await query("SELECT * FROM requests ORDER BY id")));
+  files.set("request_votes.json", serialize(await query("SELECT * FROM request_votes ORDER BY request_id, user_id")));
 
   const months = new Map();
   for (const entry of await readAll(query, "audit", "*", ["id"], pageSize)) {

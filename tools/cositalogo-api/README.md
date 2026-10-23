@@ -28,10 +28,15 @@ writes through this API and is served by this same Worker as static assets.
 | `GET /api/admins`, `PUT /api/admins/:id`, `DELETE /api/admins/:id` | admin | List admins, promote a member, remove another admin |
 | `GET /api/audit` | admin | The audit log, newest first: `{ entries, more }`; `?before=<id>` pages, `?title=movie:603` keeps one title and its links, `?limit=` up to 200 |
 | `POST /api/audit/:id/undo` | admin | Undo one write (see [Undo](#undo)); answers `{ id }` of the audit row that undid it |
+| `GET /api/requests` | member | Title requests: open ones by votes, then those answered in the last 30 days; each with `votes`, `voted`, `canDelete` and `fulfilledAt` |
+| `POST /api/requests` | member | Ask for `{ type, tmdb, season?, note? }` (no `season` for a movie or a whole series); 201 with the new request, or 200 after voting for the same open one |
+| `PUT /api/requests/:id/vote`, `DELETE /api/requests/:id/vote` | member | Vote for a request or take the vote back |
+| `DELETE /api/requests/:id` | author or admin | Delete a request and its votes |
 
 Writes need a session cookie (`s`) signed with `SESSION_SECRET`, a JSON body
-and the `member` role. Every write lands in the `audit` table in the same
-transaction, with the value before and after.
+and the `member` role. Every write to the catalog lands in the `audit` table
+in the same transaction, with the value before and after; requests and votes
+are not catalog data and are not audited.
 
 ## Undo
 
@@ -155,8 +160,9 @@ edit access.
 
 `backup/export.js` reads the production D1 through the Cloudflare API and
 writes it as files: `titles/<type>/<tmdb id>.json` with the title row and its
-links, `audit/<yyyy-mm>.json`, and `settings.json`, `admins.json` and
-`members.json`. JSON columns are written parsed so a diff shows the change, and
+links, `audit/<yyyy-mm>.json`, and `settings.json`, `admins.json`, `members.json`,
+`requests.json` and `request_votes.json` (a restore accepts backups without
+the last two). JSON columns are written parsed so a diff shows the change, and
 the same data always gives the same files, so a nightly commit only happens
 when something changed. Catalog fragments and the snapshot are left out
 because a restore rebuilds them; login requests and password failures are not

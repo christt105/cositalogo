@@ -6,6 +6,7 @@ import { serveFeed } from "./feed.js";
 import { HttpError, json, readJson } from "./http.js";
 import { addLink, deleteLink, listTitleLinks, moveLink, parseTarget, setPoster, updateLink } from "./links.js";
 import { logout, pollLogin, startLogin, telegramWebhook } from "./login.js";
+import { addRequest, deleteRequest, listRequests, unvote, vote } from "./requests.js";
 import { requireAdmin, requireUser, requireWriter } from "./session.js";
 import { loadSettings } from "./settings.js";
 import { undo } from "./undo.js";
@@ -47,7 +48,28 @@ const ROUTES = [
     await setPoster(env, user, settings, target.type, target.tmdbId, await readJson(req));
     return new Response(null, { status: 204 });
   })],
+  ["GET", /^\/api\/requests$/, member(async (req, env, user) => json(await listRequests(env.DB, user), 200, { "cache-control": "no-store" }))],
+  ["POST", /^\/api\/requests$/, member(async (req, env, user) => {
+    const { status, request } = await addRequest(env, user, await readJson(req));
+    return json(request, status);
+  })],
+  ["DELETE", /^\/api\/requests\/(\d{1,12})$/, member(async (req, env, user, [id]) => {
+    await deleteRequest(env.DB, user, id);
+    return new Response(null, { status: 204 });
+  })],
+  ["PUT", /^\/api\/requests\/(\d{1,12})\/vote$/, member(async (req, env, user, [id]) => {
+    await vote(env.DB, user, id);
+    return new Response(null, { status: 204 });
+  })],
+  ["DELETE", /^\/api\/requests\/(\d{1,12})\/vote$/, member(async (req, env, user, [id]) => {
+    await unvote(env.DB, user, id);
+    return new Response(null, { status: 204 });
+  })],
 ];
+
+function member(handler) {
+  return async (request, env, params) => handler(request, env, await requireWriter(request, env), params);
+}
 
 function write(handler) {
   return async (request, env, params) => {
