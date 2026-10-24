@@ -123,6 +123,7 @@ class PlanTest(unittest.TestCase):
         ops = plan(scan, links, audit, {}, LANGUAGES)["ops"]
         moved = {op["id"] for op in ops if op["op"] == "move"}
         self.assertEqual(moved, {1, 3})
+        self.assertTrue(all(op["fields"]["tags"] == [AUTO_TAG] for op in ops if op["op"] == "update" and op["id"] in moved))
         self.assertEqual({op["id"] for op in ops if op["op"] == "date"}, {1, 2, 3})
         self.assertNotIn(2, {op["id"] for op in ops if op["op"] == "update"})
 
@@ -130,7 +131,7 @@ class PlanTest(unittest.TestCase):
         a = "https://t.me/c/2229558644/10"
         result_ = plan([scanned(a, None, "ambiguous")], {a: link(1, a, 100)}, [], {}, LANGUAGES)
         update = next(op for op in result_["ops"] if op["op"] == "update")
-        self.assertEqual(update["fields"]["tags"], [AUTO_TAG])
+        self.assertEqual(update["fields"]["tags"], [AUTO_TAG, "dudoso"])
         self.assertEqual(result_["kept"][0]["why"], "doubtful")
 
     def test_confirmed_links_need_no_tag(self):

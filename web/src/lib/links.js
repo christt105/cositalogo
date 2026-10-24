@@ -1,3 +1,5 @@
+import { REVIEW_TAGS, withoutReviewTags } from "../../../shared/rules.js";
+
 /** Tags typed as `HDR, REMUX` into a clean list without blanks or repeats. */
 export function parseTags(text) {
   return [...new Set(text.split(",").map((t) => t.trim()).filter(Boolean))];
@@ -27,7 +29,32 @@ export function linkFields(link) {
     quality: link.quality,
     audio: [...link.audio],
     subs: [...link.subs],
-    tags: link.tags.join(", "),
+    tags: withoutReviewTags(link.tags).join(", "),
     link: link.link,
   };
+}
+
+/** Whether the scan left a link to check: `"doubtful"`, `"auto"` or null. */
+export function reviewState(tags) {
+  if (tags.includes("dudoso")) return "doubtful";
+  return tags.includes("auto") ? "auto" : null;
+}
+
+/** The tags a link shows, without the review ones. */
+export function shownTags(tags) {
+  return tags.filter((t) => !REVIEW_TAGS.includes(t));
+}
+
+const LIST_PARAMS = ["audio", "subs"];
+
+/**
+ * Initial form fields from query parameters (`link`, `quality`, `audio` and
+ * `subs` as comma lists, `season`, `tags`), as the scan report's
+ * "Identificar" links carry them; null when there are none.
+ */
+export function linkFieldsFromQuery(query) {
+  const fields = {};
+  for (const key of ["link", "quality", "season", "tags"]) if (query.get(key)) fields[key] = query.get(key);
+  for (const key of LIST_PARAMS) if (query.get(key)) fields[key] = query.get(key).split(",").map((v) => v.trim()).filter(Boolean);
+  return Object.keys(fields).length ? fields : null;
 }

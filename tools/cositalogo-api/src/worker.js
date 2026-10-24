@@ -6,6 +6,7 @@ import { serveFeed } from "./feed.js";
 import { HttpError, json, readJson } from "./http.js";
 import { addLink, deleteLink, listTitleLinks, moveLink, parseTarget, setPoster, updateLink } from "./links.js";
 import { logout, pollLogin, startLogin, telegramWebhook } from "./login.js";
+import { listReview, verifyLinks } from "./review.js";
 import { requireAdmin, requireUser, requireWriter } from "./session.js";
 import { loadSettings } from "./settings.js";
 import { undo } from "./undo.js";
@@ -35,6 +36,8 @@ const ROUTES = [
     await readJson(req);
     return json(await undo(env, user, await loadSettings(env.DB), id));
   })],
+  ["GET", /^\/api\/review$/, write(async (req, env) => json(await listReview(env.DB)))],
+  ["POST", /^\/api\/links\/verify$/, write(async (req, env, user, settings) => json(await verifyLinks(env, user, settings, await readJson(req))))],
   ["POST", /^\/api\/links$/, write(async (req, env, user, settings) => json(await addLink(env, user, settings, await readJson(req)), 201))],
   ["PATCH", /^\/api\/links\/(\d{1,12})$/, write(async (req, env, user, settings, [id]) => json(await updateLink(env, user, settings, id, await readJson(req))))],
   ["DELETE", /^\/api\/links\/(\d{1,12})$/, write(async (req, env, user, settings, [id]) => {

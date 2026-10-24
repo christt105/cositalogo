@@ -247,4 +247,31 @@ describe("TitleView", () => {
     view = await mountView(TitleView, { type: "movie", id: "1" });
     expect(view.root.textContent).toContain("no está en el Cositálogo");
   });
+
+  describe("links the scan matched by itself", () => {
+    const tagged = () => {
+      const e = entry([[1, "1080p", L1], [2, "4K", L2]]);
+      e.links[0].tags = ["HDR", "auto", "dudoso"];
+      e.links[1].tags = ["auto"];
+      return { entry: e, detail: {} };
+    };
+
+    it("look like any other link to a visitor", async () => {
+      await mount(null, { "GET /api/titles/series/1399": tagged() });
+      expect(rows()[0].querySelector(".link__info").textContent).toContain("HDR");
+      expect(view.root.querySelector(".chip--review")).toBeNull();
+      expect(view.root.textContent).not.toMatch(/auto|dudoso|sin comprobar/);
+    });
+
+    it("are flagged for members, who can mark them as checked", async () => {
+      const { api } = await mount({ id: 7, name: "Ana", member: true, admin: false }, {
+        "GET /api/titles/series/1399": tagged(),
+        "POST /api/links/verify": { verified: 1 },
+      });
+      expect(rows().map((r) => r.querySelector(".chip--review")?.textContent)).toEqual(["dudoso", "sin comprobar"]);
+      button(rows()[0], "Está bien").click();
+      await settle();
+      expect(api.calls.find((c) => c.path === "/api/links/verify").body).toEqual({ ids: [11] });
+    });
+  });
 });

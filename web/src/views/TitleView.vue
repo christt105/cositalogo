@@ -2,7 +2,7 @@
 import { computed, ref, shallowRef, watch } from "vue";
 import { RouterLink, useRouter } from "vue-router";
 import { getTitle } from "../api/catalog.js";
-import { deleteLink, getTitleLinks, moveLink, setPoster, updateLink } from "../api/links.js";
+import { deleteLink, getTitleLinks, moveLink, setPoster, updateLink, verifyLinks } from "../api/links.js";
 import { getTmdbTitle } from "../api/tmdb.js";
 import LinkRow from "../components/LinkRow.vue";
 import PosterForm from "../components/PosterForm.vue";
@@ -120,6 +120,10 @@ async function savePoster(poster) {
   if (await write(() => setPoster(props.type, props.id, poster))) editingPoster.value = false;
 }
 
+function verify(link) {
+  write(() => verifyLinks([link.id]));
+}
+
 function remove(link) {
   write(() => deleteLink(link.id));
 }
@@ -179,6 +183,7 @@ function remove(link) {
           @edit="loadSeasons"
           @save="(body, done) => save(link, body, done)"
           @delete="remove(link)"
+          @verify="verify(link)"
           @move="(target, done) => move(link, target, done)"
         />
       </ul>

@@ -60,7 +60,7 @@ async function undo(entry) {
   <ul v-else-if="entries.length" class="audit">
     <li v-for="e in entries" :key="e.id" class="audit__entry" :class="{ 'is-undone': e.undoneBy }">
       <p class="audit__line">
-        <strong>{{ e.user.name || `#${e.user.id}` }}</strong>
+        <strong>{{ e.user.name || (e.user.id === 0 ? "Escaneo del canal" : `#${e.user.id}`) }}</strong>
         {{ entryVerb(e) }}
         <RouterLink v-if="entryTitle(e)" :to="`/${entryTitle(e).type}/${entryTitle(e).tmdb}`">{{ titleName(entryTitle(e)) }}</RouterLink>
       </p>

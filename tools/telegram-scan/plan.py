@@ -19,6 +19,8 @@ from pathlib import Path
 from match import LEVELS
 
 AUTO_TAG = "auto"
+DOUBT_TAG = "dudoso"
+REVIEW_TAGS = {AUTO_TAG, DOUBT_TAG}
 SCAN_USER_ID = 0
 RECAST_LEVELS = {"certain", "strong", "medium"}
 TRUSTED_WITHOUT_TAG = {"certain", "strong"}
@@ -76,7 +78,7 @@ def wanted_fields(cover, link, languages):
         season = season_text(cover["season"])
     elif cover["type"] == "series" and season is None:
         season = "all"
-    old_tags = [t for t in (link["tags"] if link else []) if t != AUTO_TAG]
+    old_tags = [t for t in (link["tags"] if link else []) if t not in REVIEW_TAGS]
     tags = old_tags + [t for t in cover["tags"] if t not in old_tags]
     return {
         "season": season if cover["type"] == "series" else None,
@@ -87,9 +89,9 @@ def wanted_fields(cover, link, languages):
     }
 
 
-def with_auto(tags, auto):
-    tags = [t for t in tags if t != AUTO_TAG]
-    return tags + [AUTO_TAG] if auto else tags
+def with_review(tags, auto, doubtful=False):
+    tags = [t for t in tags if t not in REVIEW_TAGS]
+    return tags + [AUTO_TAG] * auto + [DOUBT_TAG] * doubtful
 
 
 def doubt(cover):
@@ -124,7 +126,7 @@ def plan(scan, links, audit, legacy, languages):
             if level in RECAST_LEVELS:
                 fields = wanted_fields(cover, None, languages)
                 ops.append({"op": "add", "type": cover["type"], "tmdb": m["tmdb_id"], "link": cover["url"],
-                            "created_at": posted, "reason": m["status"], **fields, "tags": with_auto(fields["tags"], True)})
+                            "created_at": posted, "reason": m["status"], **fields, "tags": with_review(fields["tags"], True)})
                 counts["add"] += 1
             else:
                 needs_person.append({"link": cover["url"], "heading": cover["heading"], "posted": cover["date"][:10], **doubt(cover)})
@@ -142,7 +144,7 @@ def plan(scan, links, audit, legacy, languages):
         agrees = picked == current
         auto = recast or not agrees or not (level in TRUSTED_WITHOUT_TAG or m["status"] in TRUSTED_STATUSES_WITHOUT_TAG)
         fields = wanted_fields(cover, link, languages)
-        fields["tags"] = with_auto(fields["tags"], auto)
+        fields["tags"] = with_review(fields["tags"], auto, doubtful=not recast and not agrees)
 
         if recast:
             ops.append({"op": "move", "id": link["id"], "type": cover["type"], "tmdb": m["tmdb_id"],
@@ -156,7 +158,8 @@ def plan(scan, links, audit, legacy, languages):
         else:
             counts[f"confirmed_{'auto' if auto else 'trusted'}"] += 1
 
-        changed = {f: v for f, v in fields.items() if v != link[f] and not (f == "season" and cover["type"] == "movie")}
+        changed = {f: v for f, v in fields.items()
+                   if (v != link[f] or (recast and f == "tags")) and not (f == "season" and cover["type"] == "movie")}
         if changed:
             ops.append({"op": "update", "id": link["id"], "fields": changed})
             for f in changed:

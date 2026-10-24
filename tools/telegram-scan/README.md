@@ -54,7 +54,7 @@ Each cover is matched by the first rule that gives exactly one title:
 
 Anything else (`ambiguous`, `title_mismatch`, `year_mismatch`,
 `no_results`, `file_id_mismatch`) picks nothing: an existing link stays
-where it is with `auto`, and a new post is listed in the report for a
+where it is with `auto` and `dudoso`, and a new post is listed in the report for a
 person. Results released after the post are ignored.
 
 ## What the plan does
@@ -67,8 +67,10 @@ person. Results released after the post are ignored.
   Telegram.
 - Empty audio and subtitles are filled from the post; languages the
   catalog's settings do not list are dropped.
-- New, recast and doubtful links get the `auto` tag; links confirmed by a
-  strong rule do not.
+- New, recast and doubtful links get the `auto` tag, doubtful ones also
+  `dudoso`; links confirmed by a strong rule get neither. Only members see
+  these tags in the web, and checking a link there (or editing or moving it)
+  clears them.
 - Links whose message no longer exists are listed with a possible repost,
   never changed.
 
