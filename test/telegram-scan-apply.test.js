@@ -5,6 +5,7 @@ import { DatabaseSync } from "node:sqlite";
 import { applyPlan, SCAN_USER } from "../tools/telegram-scan/apply.js";
 import { wrapSqlite } from "../tools/telegram-scan/sqlite-d1.js";
 import { clearSettingsCache } from "../tools/cositalogo-api/src/settings.js";
+import { snapshotSql } from "../tools/cositalogo-api/src/catalog.js";
 import { createD1 } from "./d1-shim.js";
 import { config, link } from "./fixtures.js";
 
@@ -101,4 +102,24 @@ test("the recorded writes replay to the same database", async () => {
     const dump = (d) => JSON.stringify(d.prepare(`SELECT * FROM ${table} ORDER BY 1, 2`).all());
     assert.equal(dump(target), dump(source), table);
   }
+});
+
+test("the snapshot is rebuilt once for the whole plan, not after every write", async () => {
+  const recorded = [];
+  const recording = wrapSqlite(db.sqlite, { onWrite: (sql) => recorded.push(sql) });
+  const plan = {
+    ops: [
+      { op: "move", id: 1, type: "movie", tmdb: 929590, season: null },
+      { op: "update", id: 2, fields: { subs: ["Castellano"] } },
+      { op: "update", id: 3, fields: { audio: ["Latino"] } },
+    ],
+  };
+  const { failures } = await applyPlan(recording, plan, { now: () => NOW });
+  assert.deepEqual(failures, []);
+  assert.equal(recorded.filter((sql) => sql === snapshotSql()).length, 1);
+  assert.equal(recorded.at(-1), snapshotSql());
+  const snapshot = JSON.parse(db.sqlite.prepare("SELECT body FROM snapshot").get().body);
+  const civilWar = snapshot.find((t) => t.tmdb === 929590);
+  assert.equal(civilWar.links.length, 2, "the final snapshot has the moved link");
+  assert.ok(civilWar.links.some((l) => l.audio.includes("Latino")), "and the last update");
 });
