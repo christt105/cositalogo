@@ -19,4 +19,5 @@ jobs:
           node-version: "22"
       - run: npm ci
       - run: npm test
+      - run: python3 -m unittest discover -s tools/telegram-scan -p 'test_*.py'
       - run: npm run build:web

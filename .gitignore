@@ -5,3 +5,6 @@ tools/cositalogo-api/.dev.vars
 tools/cositalogo-api/.wrangler/
 restore.sql
 tools/cositalogo-api/dist/
+tools/telegram-scan/__pycache__/
+*.session
+*.session-journal
