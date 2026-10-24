@@ -102,4 +102,13 @@ describe("AddView", () => {
     expect(view.root.querySelector("#tmdb-search")).not.toBeNull();
     expect(view.root.querySelector("form")).toBeNull();
   });
+
+  it("fills the form from the query, as the scan report's links do", async () => {
+    await mount({}, `type=series&tmdb=1399&link=${encodeURIComponent(LINK)}&quality=4K&audio=Castellano,Japonés&subs=Inglés&season=2`);
+    expect(view.root.querySelector("input[type=url]").value).toBe(LINK);
+    expect(view.root.querySelector("select:not([id$=season])").value).toBe("4K");
+    const checked = [...view.root.querySelectorAll("input[type=checkbox]:checked")].map((c) => c.value);
+    expect(checked).toEqual(["Castellano", "Japonés", "Inglés"]);
+    expect(view.root.querySelector("select[id$=season]").value).toBe("2");
+  });
 });

@@ -1,5 +1,5 @@
 import { ValidationError, validateLinkEntry, validatePoster } from "./validation.js";
-import { linkKey } from "../../../shared/rules.js";
+import { linkKey, withoutReviewTags } from "../../../shared/rules.js";
 import { audit } from "./audit.js";
 import { refreshTitle, seasonValue } from "./catalog.js";
 import { HttpError } from "./http.js";
@@ -195,21 +195,21 @@ export async function deleteLink(env, user, settings, id, now = Date.now(), reve
   await refreshTitle(db, row.type, row.tmdb_id, settings, now);
 }
 
-/** Moves a link to another title (and season), as reidentify does today, dropping the old title once it has no links. */
+/** Moves a link to another title (and season), as reidentify does today, dropping the old title once it has no links. Moving is a person saying which title it is, so the review tags go. */
 export async function moveLink(env, user, settings, id, body, now = Date.now(), reverts = null) {
   const db = env.DB;
   const row = await getLink(db, id);
   assertCanRemove(user, row);
   const { type, tmdbId } = parseTarget(body.type, body.tmdb);
   const before = linkView(row);
-  const target = { ...before, season: type === "series" ? body.season : undefined };
+  const target = { ...before, season: type === "series" ? body.season : undefined, tags: withoutReviewTags(before.tags) };
   const cols = linkColumns(target, type, settings);
   const stmts = await prepareTitle(env, type, tmdbId, cols.season, now);
   stmts.push(
-    db.prepare("UPDATE links SET type = ?, tmdb_id = ?, season = ?, updated_at = ? WHERE id = ?")
-      .bind(type, tmdbId, cols.season, Math.max(now, row.updated_at + 1), row.id)
+    db.prepare("UPDATE links SET type = ?, tmdb_id = ?, season = ?, tags = ?, updated_at = ? WHERE id = ?")
+      .bind(type, tmdbId, cols.season, cols.tags, Math.max(now, row.updated_at + 1), row.id)
   );
-  const after = viewOf(row, { type, tmdb_id: tmdbId, season: cols.season });
+  const after = viewOf(row, { type, tmdb_id: tmdbId, season: cols.season, tags: cols.tags });
   stmts.push(audit(db, user, "move", `link:${row.id}`, before, after, now, reverts), dropIfEmpty(db, row.type, row.tmdb_id));
   await runWrites(db, stmts);
   await refreshTitle(db, row.type, row.tmdb_id, settings, now);

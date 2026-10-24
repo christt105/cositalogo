@@ -28,3 +28,13 @@ export function moveLink(id, target, options) {
 export function setPoster(type, id, poster, options) {
   return request(`/api/titles/${type}/${id}/poster`, { method: "PUT", body: { poster }, ...options });
 }
+
+/** Links the scan matched that still wait for a person: `[{ id, type, tmdb, season?, quality, link, doubtful, postedAt }]`, doubtful first. */
+export function getReview(options) {
+  return request("/api/review", { cache: "no-cache", ...options });
+}
+
+/** Marks up to 50 links as checked, clearing their review tags; resolves to `{ verified }`. */
+export function verifyLinks(ids, options) {
+  return request("/api/links/verify", { method: "POST", body: { ids }, ...options });
+}

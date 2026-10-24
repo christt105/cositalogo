@@ -1,8 +1,8 @@
 <script setup>
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import LinkForm from "./LinkForm.vue";
 import MoveForm from "./MoveForm.vue";
-import { linkFields } from "../lib/links.js";
+import { linkFields, reviewState, shownTags } from "../lib/links.js";
 
 const props = defineProps({
   link: { type: Object, required: true },
@@ -14,7 +14,10 @@ const props = defineProps({
   from: { type: Object, default: null },
   loadTitle: { type: Function, default: undefined },
 });
-const emit = defineEmits(["edit", "save", "delete", "move"]);
+const emit = defineEmits(["edit", "save", "delete", "move", "verify"]);
+
+const REVIEW_LABELS = { auto: "sin comprobar", doubtful: "dudoso" };
+const review = computed(() => (props.canEdit ? reviewState(props.link.tags) : null));
 
 const editing = ref(false);
 const moving = ref(false);
@@ -46,12 +49,14 @@ async function save(body) {
       <span class="badge">{{ link.quality }}</span>
       <span v-for="a in link.audio" :key="`a-${a}`" class="chip">{{ a }}</span>
       <span v-for="s in link.subs" :key="`s-${s}`" class="chip chip--subs">subs {{ s }}</span>
-      <span v-for="t in link.tags" :key="`t-${t}`" class="chip chip--tag">{{ t }}</span>
+      <span v-for="t in shownTags(link.tags)" :key="`t-${t}`" class="chip chip--tag">{{ t }}</span>
+      <span v-if="review" class="chip chip--review" :class="`chip--${review}`" title="Lo casó el escaneo automático del canal">{{ REVIEW_LABELS[review] }}</span>
       <span v-if="link.group" class="panel__hint">{{ link.group }}</span>
     </div>
     <div class="link__actions">
       <a class="btn" :href="link.link" target="_blank" rel="noopener">Abrir</a>
       <template v-if="canEdit && link.id && !editing && !moving">
+        <button v-if="review" type="button" class="btn" :disabled="busy" @click="emit('verify')">Está bien</button>
         <button type="button" class="btn" :disabled="busy" @click="startEditing">Editar</button>
         <template v-if="link.canDelete">
           <button v-if="from && !confirming" type="button" class="btn" :disabled="busy" @click="startMoving">Mover</button>

@@ -602,3 +602,54 @@ describe("audit log and undo", () => {
     assert.equal((await call("POST", `/api/audit/${id}/undo`, { uid: ADMIN })).status, 415);
   });
 });
+
+describe("links to review", () => {
+  async function scanned(link, tags) {
+    const { id } = await (await call("POST", "/api/links", { uid: 1, body: movieLink({ link, tags }) })).json();
+    return id;
+  }
+
+  test("lists links with review tags for members, doubtful ones first", async () => {
+    const plain = await scanned(`https://t.me/c/${GENERAL}/2/100`, ["auto"]);
+    const doubtful = await scanned(`https://t.me/c/${GENERAL}/2/101`, ["HDR", "auto", "dudoso"]);
+    await scanned(`https://t.me/c/${GENERAL}/2/102`, ["HDR"]);
+    assert.equal((await call("GET", "/api/review")).status, 401);
+    const res = await call("GET", "/api/review", { uid: 2 });
+    assert.equal(res.status, 200);
+    const list = await res.json();
+    assert.deepEqual(list.map((l) => [l.id, l.doubtful]), [[doubtful, true], [plain, false]]);
+    assert.equal(list[0].link, `https://t.me/c/${GENERAL}/2/101`);
+  });
+
+  test("verifying clears only the review tags, audited, and skips links without them", async () => {
+    const a = await scanned(`https://t.me/c/${GENERAL}/2/100`, ["HDR", "auto", "dudoso"]);
+    const b = await scanned(`https://t.me/c/${GENERAL}/2/101`, ["REMUX"]);
+    const res = await call("POST", "/api/links/verify", { uid: 2, body: { ids: [a, b] } });
+    assert.equal(res.status, 200);
+    assert.deepEqual(await res.json(), { verified: 1 });
+    const [entry] = await catalog();
+    assert.deepEqual(entry.links.map((l) => l.tags), [["HDR"], ["REMUX"]]);
+    const update = auditRows().at(-1);
+    assert.equal(update.action, "update");
+    assert.equal(update.user_id, 2);
+    assert.deepEqual(JSON.parse(update.before).tags, ["HDR", "auto", "dudoso"]);
+    assert.deepEqual(await (await call("GET", "/api/review", { uid: 2 })).json(), []);
+  });
+
+  test("verify takes 1 to 50 existing ids and needs a member", async () => {
+    const a = await scanned(`https://t.me/c/${GENERAL}/2/100`, ["auto"]);
+    assert.equal((await call("POST", "/api/links/verify", { body: { ids: [a] } })).status, 401);
+    assert.equal((await call("POST", "/api/links/verify", { uid: 2, body: { ids: [] } })).status, 400);
+    assert.equal((await call("POST", "/api/links/verify", { uid: 2, body: { ids: Array.from({ length: 51 }, (_, i) => i + 1) } })).status, 400);
+    assert.equal((await call("POST", "/api/links/verify", { uid: 2, body: { ids: ["1"] } })).status, 400);
+    assert.equal((await call("POST", "/api/links/verify", { uid: 2, body: { ids: [999] } })).status, 404);
+  });
+
+  test("moving a link to another title clears its review tags", async () => {
+    const a = await scanned(`https://t.me/c/${GENERAL}/2/100`, ["HDR", "auto", "dudoso"]);
+    await call("POST", `/api/links/${a}/move`, { uid: 1, body: { type: "movie", tmdb: 129 } });
+    const [entry] = await catalog();
+    assert.deepEqual(entry.links[0].tags, ["HDR"]);
+    assert.deepEqual(JSON.parse(auditRows().at(-1).after).tags, ["HDR"]);
+  });
+});

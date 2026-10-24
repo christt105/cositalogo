@@ -123,4 +123,35 @@ describe("AdminView", () => {
     await settle();
     expect(api.calls.find((c) => c.method === "DELETE").path).toBe("/api/members/7");
   });
+
+  describe("Por comprobar", () => {
+    const REVIEW = [
+      { id: 21, type: "movie", tmdb: 603, quality: "1080p", link: "https://t.me/c/1/2/21", doubtful: true, postedAt: 0 },
+      { id: 22, type: "movie", tmdb: 129, quality: "4K", link: "https://t.me/c/1/2/22", doubtful: false, postedAt: 0 },
+    ];
+
+    it("lists what the scan matched, doubtful first, and checks several at once", async () => {
+      let left = REVIEW;
+      const { api } = await mount("tab=review", {
+        "GET /api/review": () => left,
+        "POST /api/links/verify": (body) => ((left = left.filter((i) => !body.ids.includes(i.id))), { verified: body.ids.length }),
+      });
+      expect(entries().map((e) => e.querySelector("a").textContent)).toEqual(["Matrix", "movie:129"]);
+      expect(entries()[0].textContent).toContain("dudoso");
+      view.root.querySelector(".review__bar input[type=checkbox]").click();
+      await settle();
+      button(view.root, "Están bien (2)").click();
+      await settle();
+      expect(api.calls.find((c) => c.path === "/api/links/verify").body).toEqual({ ids: [21, 22] });
+      expect(view.root.textContent).toContain("No queda nada por comprobar");
+    });
+
+    it("can show only the doubtful ones", async () => {
+      await mount("tab=review", { "GET /api/review": REVIEW });
+      const [, onlyDoubtful] = view.root.querySelectorAll(".review__bar input[type=checkbox]");
+      onlyDoubtful.click();
+      await settle();
+      expect(entries()).toHaveLength(1);
+    });
+  });
 });

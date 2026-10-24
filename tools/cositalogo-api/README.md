@@ -16,7 +16,9 @@ writes through this API and is served by this same Worker as static assets.
 | `POST /api/links` | member | Add a link `{ type, tmdb, season?, quality, audio?, subs?, tags?, link, poster? }`; the title is fetched from TMDB the first time, and `poster` (a manual poster) is only accepted then, 409 if the title already exists |
 | `PATCH /api/links/:id` | member | Change any of `season`, `quality`, `audio`, `subs`, `tags`, `link` |
 | `DELETE /api/links/:id` | author or admin | Delete a link; a title with no links left disappears |
-| `POST /api/links/:id/move` | author or admin | Move a link to `{ type, tmdb, season? }` |
+| `POST /api/links/:id/move` | author or admin | Move a link to `{ type, tmdb, season? }`; it loses the review tags |
+| `GET /api/review` | member | Links with the scan's review tags (`auto`, `dudoso`, see [`tools/telegram-scan`](../telegram-scan/README.md)): `[{ id, type, tmdb, season?, quality, link, doubtful, postedAt }]`, doubtful first |
+| `POST /api/links/verify` | member | Clear the review tags of `{ ids }` (1 to 50 links), each logged as an edit; answers `{ verified }` |
 | `PUT /api/titles/:type/:id/poster` | member | `{ poster, season? }` sets a manual poster, `poster: null` clears it |
 | `POST /api/login` | anyone | Starts a sign-in: `{ url, expiresAt }` with the bot deep link, plus a browser cookie |
 | `POST /api/login/poll` | the browser that started it | 202 while pending, then the session cookie and `{ id, name, member, admin }`; 410 when expired |

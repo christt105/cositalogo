@@ -419,6 +419,16 @@ body {
   border-style: dashed;
 }
 
+.chip--review {
+  border-color: #d9a441;
+  color: #d9a441;
+}
+
+.chip--doubtful {
+  border-color: #e0605a;
+  color: #e0605a;
+}
+
 .links {
   display: flex;
   flex-direction: column;
@@ -579,4 +589,23 @@ body {
 
 a.poster-tab {
   text-decoration: none;
+}
+
+.review__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.8rem;
+  margin: 0.6rem 0;
+}
+
+.review__item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.review__info {
+  flex: 1;
+  min-width: 0;
 }

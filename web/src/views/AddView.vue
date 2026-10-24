@@ -10,6 +10,7 @@ import WriteGate from "../components/WriteGate.vue";
 import { useCatalog } from "../composables/useCatalog.js";
 import { useSession } from "../composables/useSession.js";
 import { TYPE_LABELS, titleKey } from "../lib/catalog.js";
+import { linkFieldsFromQuery } from "../lib/links.js";
 import { errorMessage } from "../lib/errors.js";
 
 const props = defineProps({
@@ -42,6 +43,8 @@ async function select({ type, tmdb }) {
     state.value = "error";
   }
 }
+
+const initialFields = linkFieldsFromQuery(props.query);
 
 const preset = { type: props.query.get("type"), tmdb: Number(props.query.get("tmdb")) };
 if ((preset.type === "movie" || preset.type === "series") && Number.isSafeInteger(preset.tmdb) && preset.tmdb > 0) select(preset);
@@ -98,7 +101,7 @@ async function submit(body) {
           :original-language="selected.originalLanguage ?? null"
           v-bind="loadPosters ? { loadPosters } : {}"
         />
-        <LinkForm :key="titleKey(selected.type, selected.tmdb)" :type="selected.type" :seasons="selected.seasons" submit-label="Añadir" :busy="busy" @submit="submit" />
+        <LinkForm :key="titleKey(selected.type, selected.tmdb)" :type="selected.type" :seasons="selected.seasons" :initial="initialFields" submit-label="Añadir" :busy="busy" @submit="submit" />
         <p v-if="error" class="form__error" role="alert">{{ error }}</p>
       </template>
     </WriteGate>

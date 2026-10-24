@@ -36,3 +36,14 @@ export function matchesSearch(item, query) {
     normalizeText(item.englishTitle || "").includes(q)
   );
 }
+
+/**
+ * Tags the Telegram scan puts on links it matched by itself: `auto` on all
+ * of them, plus `dudoso` when it could not tell which title it was. Only
+ * members see them, and any change a person makes to the link clears them.
+ */
+export const REVIEW_TAGS = ["auto", "dudoso"];
+
+export function withoutReviewTags(tags) {
+  return tags.filter((t) => !REVIEW_TAGS.includes(t));
+}
