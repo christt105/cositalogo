@@ -1,8 +1,10 @@
 /**
  * Runs the operations of a plan (plan.py) against a SQLite copy of the
  * catalog database, through the same functions the API uses, so audit rows,
- * validation, title fragments and the snapshot come out as if a person had
- * made each change from the web.
+ * validation and title fragments come out as if a person had made each
+ * change from the web. The snapshot is rebuilt once at the end instead of
+ * after every change: each rebuild reads every title, and thousands of them
+ * on the remote database exhaust D1's daily row-read allowance.
  *
  * Usage: node apply.js <plan.json> <database.sqlite> [--record <out.sql>]
  *
@@ -29,6 +31,25 @@ const seasonOf = (season) => (season === null || season === undefined ? undefine
 function inline(sql, params) {
   let i = 0;
   return sql.replace(/\?/g, () => literal(params[i++]));
+}
+
+/**
+ * A view of a D1 binding where the snapshot rebuild is a no-op, so the API
+ * functions can run unchanged without rebuilding it after every write.
+ */
+export function withoutSnapshot(db) {
+  const sql = snapshotSql();
+  const skipped = { success: true, results: [], meta: { changes: 0 } };
+  const noop = { skip: true, bind: () => noop, first: async () => null, all: async () => skipped, run: async () => skipped };
+  return {
+    prepare: (text) => (text === sql ? noop : db.prepare(text)),
+    async batch(statements) {
+      const real = statements.filter((s) => !s.skip);
+      const results = real.length ? await db.batch(real) : [];
+      let i = 0;
+      return statements.map((s) => (s.skip ? skipped : results[i++]));
+    },
+  };
 }
 
 /** Runs one operation; returns null on success or the error message. */
@@ -66,7 +87,7 @@ async function runOp(env, settings, op, now) {
  * are rolled back one by one and reported, the rest go on.
  */
 export async function applyPlan(db, plan, { tmdbKey, now = () => Date.now(), log = () => {} } = {}) {
-  const env = { DB: db, TMDB_API_KEY: tmdbKey };
+  const env = { DB: withoutSnapshot(db), TMDB_API_KEY: tmdbKey };
   const settings = await loadSettings(db);
   const failures = [];
   const done = {};
